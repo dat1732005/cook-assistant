@@ -137,6 +137,16 @@ describe('T02: Kiểm tra quy đổi đơn vị (conversions)', () => {
       /Không thể quy đổi đơn vị/,
     );
   });
+
+  it('Thìa kèm nguyên liệu dạng rắn (baseUnit: g) mà không có quy đổi riêng phải ném lỗi, không đoán ra số gam', () => {
+    // 2 thìa bột mì/đường (baseUnit: g) không có conversions riêng: bắt buộc ném lỗi, không tự ý đoán ra số gam
+    expect(() => convertToBaseUnit(2, 'thìa cà phê', 'g', null)).toThrow(
+      /Không thể quy đổi đơn vị "thìa cà phê" sang đơn vị gốc "g"/,
+    );
+    expect(() => convertToBaseUnit(1, 'thìa canh', 'g', {})).toThrow(
+      /Không thể quy đổi đơn vị "thìa canh" sang đơn vị gốc "g"/,
+    );
+  });
 });
 
 describe('T02: Kiểm tra các schema thực thể khác (Ingredient, Pantry, Session, Profile, Safety)', () => {

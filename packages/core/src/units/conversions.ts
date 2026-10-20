@@ -31,14 +31,15 @@ export type CommonUnit = (typeof COMMON_UNITS)[number];
 
 /**
  * Bảng dung tích mặc định cho các đơn vị đo lường thể tích chất lỏng chuẩn (ml).
- * Nguồn: Chuẩn đo lường làm bếp quốc tế (Metric Kitchen Units).
+ * Nguồn: Chuẩn đo lường làm bếp quốc tế (Metric Kitchen Units: 1 tsp = 5 ml, 1 tbsp = 15 ml, 1 metric cup = 240/250 ml).
+ * Ghi chú: quy ước tạm, chờ xác nhận theo quy tắc R2.
  */
 export const DEFAULT_VOLUME_CONVERSIONS_IN_ML: Readonly<Record<string, number>> = {
-  // 1 thìa cà phê chuẩn bằng 5 mililit
+  // 1 thìa cà phê chuẩn bằng 5 mililit (nguồn: 1 metric teaspoon = 5 ml; quy ước tạm, chờ xác nhận)
   'thìa cà phê': 5,
-  // 1 thìa canh chuẩn bằng 15 mililit
+  // 1 thìa canh chuẩn bằng 15 mililit (nguồn: 1 metric tablespoon = 15 ml; quy ước tạm, chờ xác nhận)
   'thìa canh': 15,
-  // 1 chén (bát ăn cơm) chuẩn chất lỏng khoảng 240 mililit
+  // 1 chén chuẩn chất lỏng khoảng 240 mililit (nguồn: 1 US customary cup = 240 ml; quy ước tạm, chờ xác nhận)
   'chén': 240,
 };
 
@@ -73,11 +74,11 @@ export function isBaseUnit(unit: string): unit is BaseUnit {
  * - amount: số lượng cần đổi, số thực dương (> 0).
  * - fromUnit: đơn vị ban đầu (ví dụ: "quả", "thìa cà phê").
  * - baseUnit: đơn vị gốc của nguyên liệu ("g", "ml", hoặc "cái").
- * - conversions: bảng quy đổi riêng của nguyên liệu (ví dụ: {"quả": 55, "thìa cà phê": 5}).
+ * - conversions: bảng quy đổi riêng của nguyên liệu (ví dụ: {"hộp": 200, "thìa cà phê": 5}).
  * Ra: Số lượng tính theo đơn vị gốc (số thực).
  *
  * Ví dụ có số cụ thể:
- * - 2 quả trứng gà, baseUnit="g", conversions={"quả": 55} -> trả về 110 (gam).
+ * - 2 hộp sữa tươi, baseUnit="ml", conversions={"hộp": 200} -> trả về 400 (ml).
  * - 3 thìa cà phê nước mắm, baseUnit="ml", conversions={} -> trả về 15 (ml theo thể tích chuẩn).
  *
  * Gọi bởi: Scheduler, Module trừ kho, Bộ chuyển đổi công thức.
@@ -130,7 +131,7 @@ export function convertToBaseUnit(
  * Ra: Số lượng đã quy đổi sang toUnit.
  *
  * Ví dụ:
- * - Đổi 110 g trứng sang "quả" với conversions={"quả": 55} -> trả về 2 quả.
+ * - Đổi 400 ml sữa sang "hộp" với conversions={"hộp": 200} -> trả về 2 hộp.
  *
  * Gọi bởi: Giao diện hiển thị (T06), Module tính giá (T12).
  */

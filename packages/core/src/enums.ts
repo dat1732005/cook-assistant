@@ -94,6 +94,9 @@ export type PantryEventReason = z.infer<typeof PantryEventReasonEnum>;
 
 /**
  * 8 mã dị ứng thực phẩm cố định theo kế hoạch và y tế (Mục T02.5).
+ * GHI CHÚ BẮT BUỘC THEO KẾ HOẠCH & R1/R6:
+ * Danh sách 8 mã dị ứng dưới đây là quy ước tạm thời từ bản kế hoạch ban đầu,
+ * chờ đối chiếu và xác nhận chính thức với tài liệu của cơ quan y tế.
  * - peanut: đậu phộng (lạc)
  * - tree_nut: các loại hạt cây (hạt điều, óc chó, hạnh nhân...)
  * - crustacean: động vật giáp xác (tôm, cua...)
