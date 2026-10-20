@@ -1,0 +1,38 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+build/
+target/
+*.tsbuildinfo
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Expo
+apps/mobile/.expo/
+apps/mobile/android/
+apps/mobile/ios/
+
+# Test coverage
+coverage/
+
+# Logs
+*.log
+npm-debug.log*
+
+# pnpm
+.pnpm-store/
