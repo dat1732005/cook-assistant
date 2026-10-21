@@ -114,20 +114,32 @@ describe('T02: Kiểm tra quy đổi đơn vị (conversions)', () => {
   });
 
   it('Đổi theo bảng conversions riêng của nguyên liệu (quả -> g)', () => {
-    const conversions = { quả: 55 }; // 1 quả trứng = 55 gam
+    // 55g/quả là dữ liệu giả (synthetic mock data) dùng riêng cho test case, không phải dữ liệu thật theo quy tắc R3
+    const conversions = { quả: 55 /* dữ liệu giả (synthetic mock data) */ };
     const result = convertToBaseUnit(3, 'quả', 'g', conversions);
     expect(result).toBe(165); // 3 * 55 = 165 gam
   });
 
   it('Đổi theo thể tích chuẩn mặc định cho chất lỏng (thìa cà phê -> ml, thìa canh -> ml)', () => {
-    // 3 thìa cà phê nước mắm = 15 ml
+    // 3 thìa cà phê nước mắm = 15 ml (quy ước tạm, chờ xác nhận)
     expect(convertToBaseUnit(3, 'thìa cà phê', 'ml')).toBe(15);
-    // 2 thìa canh dầu ăn = 30 ml
+    // 2 thìa canh dầu ăn = 30 ml (quy ước tạm, chờ xác nhận)
     expect(convertToBaseUnit(2, 'thìa canh', 'ml')).toBe(30);
   });
 
+  it('Dùng chén khi chưa có quy đổi trong bảng conversions riêng phải ném lỗi rõ ràng (MISSING)', () => {
+    // Không có conversions riêng cho chén đối với nguyên liệu lỏng (baseUnit: ml) -> phải ném lỗi rõ ràng
+    expect(() => convertToBaseUnit(1, 'chén', 'ml', null)).toThrow(
+      /Không thể quy đổi đơn vị "chén" sang đơn vị gốc "ml" do đơn vị "chén" đang ở trạng thái MISSING/,
+    );
+    // Không có conversions riêng cho chén đối với nguyên liệu rắn (baseUnit: g) -> phải ném lỗi rõ ràng
+    expect(() => convertToBaseUnit(2, 'chén', 'g', {})).toThrow(
+      /Không thể quy đổi đơn vị "chén" sang đơn vị gốc "g" do đơn vị "chén" đang ở trạng thái MISSING/,
+    );
+  });
+
   it('Quy đổi giữa hai đơn vị không phải gốc (g -> quả qua bảng conversions)', () => {
-    const conversions = { quả: 50 }; // 1 quả = 50 gam
+    const conversions = { quả: 50 /* dữ liệu giả (synthetic mock data) */ };
     // 150 gam trứng = 3 quả
     expect(convertUnit(150, 'g', 'quả', 'g', conversions)).toBe(3);
   });
@@ -156,7 +168,7 @@ describe('T02: Kiểm tra các schema thực thể khác (Ingredient, Pantry, Se
       name: 'Trứng gà',
       aliases: ['hột gà'],
       baseUnit: 'quả', // sai enum: chỉ nhận 'g', 'ml', 'cái'
-      conversions: { quả: 55 },
+      conversions: { quả: 55 /* dữ liệu giả (synthetic mock data) */ },
       allergens: ['egg'],
     };
     const invalidResult = validateIngredient(validIngredient);

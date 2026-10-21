@@ -39,8 +39,7 @@ export const DEFAULT_VOLUME_CONVERSIONS_IN_ML: Readonly<Record<string, number>> 
   'thìa cà phê': 5,
   // 1 thìa canh chuẩn bằng 15 mililit (nguồn: 1 metric tablespoon = 15 ml; quy ước tạm, chờ xác nhận)
   'thìa canh': 15,
-  // 1 chén chuẩn chất lỏng khoảng 240 mililit (nguồn: 1 US customary cup = 240 ml; quy ước tạm, chờ xác nhận)
-  'chén': 240,
+  // 'chén': MISSING (không có số mặc định; dung tích bát/chén ở Việt Nam dao động 200-250 ml tùy vùng miền, quy tắc R2: không điền số)
 };
 
 /**
@@ -113,6 +112,13 @@ export function convertToBaseUnit(
   }
 
   // Bước 3: Không tìm thấy quy tắc chuyển đổi nào phù hợp -> Báo lỗi nghiệp vụ rõ ràng
+  // Chặn riêng đơn vị chén: đang ở trạng thái MISSING, bắt buộc phải có bảng quy đổi riêng
+  if (fromUnit === 'chén') {
+    throw new Error(
+      `Không thể quy đổi đơn vị "chén" sang đơn vị gốc "${baseUnit}" do đơn vị "chén" đang ở trạng thái MISSING (chưa có quy đổi chuẩn xác nhận, dung tích chén ăn cơm Việt Nam không đồng nhất theo quy tắc R2). Vui lòng khai báo quy đổi cụ thể trong bảng conversions của nguyên liệu.`,
+    );
+  }
+
   throw new Error(
     `Không thể quy đổi đơn vị "${fromUnit}" sang đơn vị gốc "${baseUnit}". Vui lòng bổ sung vào bảng conversions của nguyên liệu.`,
   );
@@ -172,6 +178,12 @@ export function convertUnit(
   }
 
   // Báo lỗi nếu không có cách chuyển từ đơn vị gốc sang toUnit
+  if (toUnit === 'chén') {
+    throw new Error(
+      `Không thể quy đổi từ đơn vị gốc "${baseUnit}" sang đơn vị đích "chén" do đơn vị "chén" đang ở trạng thái MISSING (chưa có quy đổi chuẩn xác nhận theo quy tắc R2). Vui lòng khai báo quy đổi cụ thể trong bảng conversions của nguyên liệu.`,
+    );
+  }
+
   throw new Error(
     `Không thể quy đổi từ đơn vị gốc "${baseUnit}" sang đơn vị đích "${toUnit}".`,
   );
