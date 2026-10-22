@@ -129,17 +129,49 @@ export const OptimizationModeEnum = z.enum(OPTIMIZATION_MODES);
 export type OptimizationMode = z.infer<typeof OptimizationModeEnum>;
 
 /**
- * Trạng thái của một phiên nấu ăn trực tiếp (Mục T07).
+ * Trạng thái của một phiên nấu ăn trực tiếp theo kế hoạch (docs/plan.md dòng 181).
+ * Giá trị nguyên văn từ kế hoạch: cooking | done | abandoned
  */
 export const COOK_SESSION_STATUSES = [
-  'preparing',
   'cooking',
-  'paused',
-  'completed',
-  'cancelled',
+  'done',
+  'abandoned',
 ] as const;
 export const CookSessionStatusEnum = z.enum(COOK_SESSION_STATUSES);
 export type CookSessionStatus = z.infer<typeof CookSessionStatusEnum>;
+
+/**
+ * Nguồn nhập của mục kho thực phẩm (docs/plan.md dòng 179).
+ * Giá trị nguyên văn từ kế hoạch: manual | cook | shopping | photo
+ */
+export const PANTRY_ITEM_SOURCES = [
+  'manual',
+  'cook',
+  'shopping',
+  'photo',
+] as const;
+export const PantryItemSourceEnum = z.enum(PANTRY_ITEM_SOURCES);
+export type PantryItemSource = z.infer<typeof PantryItemSourceEnum>;
+
+/**
+ * Trạng thái bảo quản thực phẩm (docs/plan.md dòng 183: tươi, đã mở, đã nấu).
+ * Dự án đặt tên tiếng Anh snake_case: fresh | opened | cooked
+ */
+export const STORAGE_STATES = ['fresh', 'opened', 'cooked'] as const;
+export const StorageStateEnum = z.enum(STORAGE_STATES);
+export type StorageState = z.infer<typeof StorageStateEnum>;
+
+/**
+ * Vị trí bảo quản thực phẩm (docs/plan.md dòng 183: ngăn mát, ngăn đá, nhiệt độ phòng).
+ * Dự án đặt tên tiếng Anh snake_case: fridge | freezer | room_temperature
+ */
+export const STORAGE_LOCATIONS = [
+  'fridge',
+  'freezer',
+  'room_temperature',
+] as const;
+export const StorageLocationEnum = z.enum(STORAGE_LOCATIONS);
+export type StorageLocation = z.infer<typeof StorageLocationEnum>;
 
 /**
  * Phân loại cảnh báo an toàn thực phẩm (Mục T16).
@@ -153,3 +185,4 @@ export const SAFETY_CATEGORIES = [
 ] as const;
 export const SafetyCategoryEnum = z.enum(SAFETY_CATEGORIES);
 export type SafetyCategory = z.infer<typeof SafetyCategoryEnum>;
+

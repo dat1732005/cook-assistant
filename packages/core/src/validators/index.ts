@@ -23,6 +23,8 @@ import {
   UserProfileSchema,
   SafetyRule,
   SafetyRuleSchema,
+  StorageRule,
+  StorageRuleSchema,
 } from '../schemas/index.js';
 
 /**
@@ -173,3 +175,22 @@ export function validateSafetyRule(data: unknown): ValidationResult<SafetyRule> 
   }
   return { success: false, errors: formatZodErrors(result.error) };
 }
+
+/**
+ * Kiểm định quy tắc bảo quản (StorageRule theo docs/plan.md dòng 183).
+ */
+export function validateStorageRule(data: unknown): ValidationResult<StorageRule> {
+  const result = StorageRuleSchema.safeParse(data);
+  if (result.success) {
+    return { success: true, data: result.data };
+  }
+  return { success: false, errors: formatZodErrors(result.error) };
+}
+
+/**
+ * Phân tích dữ liệu thành StorageRule (ném ngoại lệ nếu sai).
+ */
+export function parseStorageRule(data: unknown): StorageRule {
+  return StorageRuleSchema.parse(data);
+}
+
