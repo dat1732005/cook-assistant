@@ -19,7 +19,7 @@ import { AllergenCodeEnum, BaseUnitEnum } from '../enums.js';
  * - group: nhóm nguyên liệu (kế hoạch ghi "nhóm") - TÊN DO DỰ ÁN ĐẶT
  * - base_unit: đơn vị gốc (kế hoạch ghi "đơn vị gốc (`g`, `ml` hoặc `cái`)") - TÊN DO DỰ ÁN ĐẶT cho khóa, giá trị enum Khớp
  * - conversions: bảng quy đổi (kế hoạch ghi "bảng quy đổi (ví dụ thìa canh sang `ml`)") - TÊN DO DỰ ÁN ĐẶT
- * - allergen_code: mã dị ứng (kế hoạch ghi "mã dị ứng") - TÊN DO DỰ ÁN ĐẶT
+ * - allergen_codes: danh sách mã dị ứng (kế hoạch ghi "mã dị ứng", dự án dùng mảng để tránh bỏ sót) - TÊN DO DỰ ÁN ĐẶT
  * - reference_price: giá tham khảo theo đơn vị gốc (kế hoạch ghi "giá tham khảo theo đơn vị gốc") - TÊN DO DỰ ÁN ĐẶT
  * - price_updated_at: ngày cập nhật giá (kế hoạch ghi "ngày cập nhật giá") - TÊN DO DỰ ÁN ĐẶT
  * - storage_rule_id: mã quy tắc bảo quản (kế hoạch ghi "mã quy tắc bảo quản") - TÊN DO DỰ ÁN ĐẶT
@@ -39,8 +39,8 @@ export const IngredientSchema = z.object({
   conversions: z
     .record(z.string(), z.number().positive('Hệ số quy đổi phải lớn hơn 0'))
     .default({}),
-  // Mã dị ứng (nếu có): một trong 8 mã dị ứng chuẩn theo kế hoạch
-  allergen_code: AllergenCodeEnum.nullable().optional(),
+  // Danh sách các mã dị ứng (nếu có): mảng các mã AllergenCode chuẩn, mặc định rỗng để tránh bỏ sót cảnh báo an toàn
+  allergen_codes: z.array(AllergenCodeEnum).default([]),
   // Giá tham khảo tính theo đơn vị gốc (VND)
   reference_price: z
     .number()

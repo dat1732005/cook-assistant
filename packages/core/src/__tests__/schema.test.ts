@@ -227,29 +227,29 @@ describe('T02: Kiểm tra quy đổi đơn vị (conversions)', () => {
 });
 
 describe('T02: Kiểm tra thực thể Ingredient (ít nhất 2 ca hợp lệ, 3 ca sai)', () => {
-  it('Ca hợp lệ 1: Nguyên liệu đầy đủ các trường theo docs/plan.md dòng 175', () => {
+  it('Ca hợp lệ 1: Nguyên liệu đầy đủ các trường theo docs/plan.md dòng 175 và có HAI mã dị ứng', () => {
     const validFull = {
-      id: 'trung-ga',
-      name: 'Trứng gà',
-      aliases: ['hột gà', 'trứng gà ta'],
-      group: 'trung-sua',
-      base_unit: 'cái',
-      conversions: { quả: 1, chục: 10 },
-      allergen_code: 'egg',
-      reference_price: 3500,
+      id: 'sot-dau-phong-me',
+      name: 'Sốt đậu phộng mè',
+      aliases: ['sốt lạc vừng'],
+      group: 'gia-vi',
+      base_unit: 'ml',
+      conversions: { 'thìa canh': 15 },
+      allergen_codes: ['peanut', 'tree_nut'], // Ca hợp lệ có HAI mã dị ứng tránh bỏ sót
+      reference_price: 25000,
       price_updated_at: '2026-10-22',
-      storage_rule_id: 'sr-trung-ga',
+      storage_rule_id: 'sr-sot-dau-phong',
     };
     const result = validateIngredient(validFull);
     expect(result.success).toBe(true);
     if (result.success) {
-      expect(result.data.id).toBe('trung-ga');
-      expect(result.data.base_unit).toBe('cái');
-      expect(result.data.allergen_code).toBe('egg');
+      expect(result.data.id).toBe('sot-dau-phong-me');
+      expect(result.data.base_unit).toBe('ml');
+      expect(result.data.allergen_codes).toEqual(['peanut', 'tree_nut']);
     }
   });
 
-  it('Ca hợp lệ 2: Nguyên liệu tối giản chỉ có các trường bắt buộc', () => {
+  it('Ca hợp lệ 2: Nguyên liệu tối giản chỉ có các trường bắt buộc (allergen_codes mặc định [])', () => {
     const validMinimal = {
       id: 'muoi',
       name: 'Muối ăn',
@@ -261,6 +261,7 @@ describe('T02: Kiểm tra thực thể Ingredient (ít nhất 2 ca hợp lệ, 3
     if (result.success) {
       expect(result.data.aliases).toEqual([]);
       expect(result.data.conversions).toEqual({});
+      expect(result.data.allergen_codes).toEqual([]);
     }
   });
 
@@ -286,7 +287,19 @@ describe('T02: Kiểm tra thực thể Ingredient (ít nhất 2 ca hợp lệ, 3
     expect(result.success).toBe(false);
   });
 
-  it('Ca sai 3: Bắt lỗi khi giá tham khảo reference_price là số âm', () => {
+  it('Ca sai 3: Bắt lỗi khi allergen_codes chứa mã ngoài danh sách 8 mã chuẩn', () => {
+    const invalid = {
+      id: 'bot-mi-pha',
+      name: 'Bột mì pha phấn hoa',
+      group: 'bot',
+      base_unit: 'g',
+      allergen_codes: ['wheat', 'pollen'], // 'pollen' không thuộc 8 mã dị ứng chuẩn
+    };
+    const result = validateIngredient(invalid);
+    expect(result.success).toBe(false);
+  });
+
+  it('Ca sai 4: Bắt lỗi khi giá tham khảo reference_price là số âm', () => {
     const invalid = {
       id: 'dau-an',
       name: 'Dầu ăn',
