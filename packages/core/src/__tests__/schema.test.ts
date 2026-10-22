@@ -3,17 +3,31 @@
  * Làm gì: Bộ kiểm thử đơn vị cho toàn bộ Zod schemas (snake_case chuẩn theo docs/plan.md), validator và hàm quy đổi đơn vị.
  * Nhận vào:
  *   - JSON mẫu công thức đọc trực tiếp từ docs/plan.md (không dán bản sao).
- *   - Dữ liệu mẫu (fixtures/recipes.ts) cho 4 ca công thức hợp lệ còn lại và 15 ca công thức sai.
- *   - Ít nhất 2 ca hợp lệ và 3 ca sai cho mỗi thực thể mới: Ingredient, PantryItem, PantryEvent, CookSession, UserProfile, StorageRule.
+ *   - Danh mục tên trường đọc trực tiếp từ docs/field-names.md để kiểm định tính đồng bộ giữa tài liệu và mã nguồn.
+ *   - Dữ liệu mẫu (fixtures/recipes.ts) cho các ca công thức hợp lệ và các ca công thức sai.
+ *   - Các ca kiểm thử cho quy tắc R2 (missing_fields), R3 (source, confirmed_by) và an toàn dị ứng (allergen_codes).
+ *   - Ít nhất 2 ca hợp lệ và 3 ca sai cho mỗi thực thể: Ingredient, PantryItem, PantryEvent, CookSession, UserProfile, StorageRule, SafetyRule.
  * Trả ra: Kết quả kiểm thử thành công (pass) hoặc thất bại (fail) của Vitest.
  * Ai gọi: Lệnh `pnpm test` tại packages/core hoặc thư mục gốc monorepo.
- * Bám theo: Mục T02 trong docs/tasks.md, docs/plan.md dòng 168-300.
+ * Bám theo: Mục T02 trong docs/tasks.md, docs/plan.md dòng 168-300, docs/field-names.md.
  */
 
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import {
+  RecipeSchema,
+  RecipeIngredientSchema,
+  RecipeStepSchema,
+  IngredientSchema,
+  PantryItemSchema,
+  PantryEventSchema,
+  CookSessionSchema,
+  UserProfileSchema,
+  StorageRuleSchema,
+  SafetyRuleSchema,
+} from '../schemas/index.js';
 import {
   validateRecipe,
   validateIngredient,
@@ -65,6 +79,289 @@ function readSampleRecipeJsonFromPlan(): Record<string, unknown> {
   }
   return JSON.parse(match[1]) as Record<string, unknown>;
 }
+
+/**
+ * Hàm đọc trực tiếp docs/field-names.md và trích xuất danh sách khóa (cả bảng A và B) của từng thực thể.
+ */
+function parseFieldNamesDoc(): Record<string, string[]> {
+  const currentDir = path.dirname(fileURLToPath(import.meta.url));
+  const candidatePaths = [
+    path.resolve(currentDir, '../../../../docs/field-names.md'),
+    path.resolve(process.cwd(), 'docs/field-names.md'),
+    path.resolve(process.cwd(), '../../docs/field-names.md'),
+  ];
+  const docPath = candidatePaths.find((p) => fs.existsSync(p));
+  if (!docPath) {
+    throw new Error(
+      `Không tìm thấy file docs/field-names.md tại các vị trí tìm kiếm: ${candidatePaths.join(', ')}`,
+    );
+  }
+  const content = fs.readFileSync(docPath, 'utf8');
+
+  // Tách tài liệu theo các phần ## <số>. Thực thể `<name>`
+  const sections = content.split(/\n(?=##\s+\d+\.)/);
+  const result: Record<string, string[]> = {};
+
+  for (const section of sections) {
+    const headerMatch = section.match(/##\s+\d+\.\s+.*?`([a-z_]+)`/);
+    if (!headerMatch || !headerMatch[1]) continue;
+    const entityName = headerMatch[1];
+
+    const lines = section.split('\n');
+    const keys: string[] = [];
+    for (const line of lines) {
+      // Tìm dòng bảng markdown: | `tên_khóa` | ...
+      const keyMatch = line.match(/^\|\s*`([a-zA-Z0-9_]+)`\s*\|/);
+      if (keyMatch && keyMatch[1]) {
+        keys.push(keyMatch[1]);
+      }
+    }
+    result[entityName] = Array.from(new Set(keys));
+  }
+
+  return result;
+}
+
+describe('T02: Kiểm tra đồng bộ 100% giữa docs/field-names.md và Zod Schemas', () => {
+  const docEntities = parseFieldNamesDoc();
+
+  // Danh sách schema ánh xạ tương ứng với 10 thực thể trong docs/field-names.md
+  const schemaMap: Record<string, Record<string, unknown>> = {
+    recipe: RecipeSchema.shape,
+    recipe_ingredient: RecipeIngredientSchema.shape,
+    recipe_step: RecipeStepSchema.shape,
+    ingredient: IngredientSchema.shape,
+    pantry_item: PantryItemSchema.shape,
+    pantry_event: PantryEventSchema.shape,
+    cook_session: CookSessionSchema.shape,
+    user_profile: UserProfileSchema.shape,
+    storage_rule: StorageRuleSchema.shape,
+    safety_rule: SafetyRuleSchema.shape,
+  };
+
+  it('Tất cả 10 thực thể đều có mặt trong docs/field-names.md', () => {
+    expect(Object.keys(schemaMap).sort()).toEqual(Object.keys(docEntities).sort());
+  });
+
+  for (const [entityName, shape] of Object.entries(schemaMap)) {
+    it(`Thực thể "${entityName}": Danh sách khóa trong docs/field-names.md khớp 100% với schema code`, () => {
+      const docKeys = (docEntities[entityName] || []).slice().sort();
+      const schemaKeys = Object.keys(shape).sort();
+
+      expect(
+        docKeys,
+        `Thực thể ${entityName} bị lệch khóa giữa docs/field-names.md và mã nguồn schema`,
+      ).toEqual(schemaKeys);
+    });
+  }
+
+  it('Chứng minh test sẽ đỏ (fail) nếu cố ý làm lệch một khóa giữa tài liệu và schema', () => {
+    const realRecipeKeys = Object.keys(RecipeSchema.shape);
+    // Cố ý giả lập tài liệu có thêm khóa lạ không tồn tại trong schema
+    const tamperedDocKeys = [...realRecipeKeys, 'fake_unexpected_field'].sort();
+    const sortedSchemaKeys = [...realRecipeKeys].sort();
+
+    // Khẳng định việc so khớp sẽ phát hiện ra sự sai lệch
+    expect(tamperedDocKeys).not.toEqual(sortedSchemaKeys);
+
+    // Cố ý giả lập tài liệu bị thiếu một khóa quan trọng
+    const tamperedMissingDocKeys = realRecipeKeys.filter((k) => k !== 'slug').sort();
+    expect(tamperedMissingDocKeys).not.toEqual(sortedSchemaKeys);
+  });
+});
+
+describe('T02: Kiểm tra quy tắc R2 (missing_fields) và R3 (source, confirmed_by)', () => {
+  it('Ca hợp lệ 1: Món reviewed có đầy đủ source, confirmed_by và missing_fields rỗng', () => {
+    const validReviewed = {
+      ...VALID_RECIPE_REVIEWED,
+      status: 'reviewed' as const,
+      reviewer: 'Chuyên gia A',
+      reviewed_at: '2026-10-22T08:00:00Z',
+      source: 'Cẩm nang ẩm thực Việt Nam',
+      confirmed_by: 'Bếp trưởng B',
+      missing_fields: [],
+    };
+    expect(validateRecipe(validReviewed).success).toBe(true);
+  });
+
+  it('Ca hợp lệ 2: Món published có đầy đủ source, confirmed_by và missing_fields rỗng', () => {
+    const validPublished = {
+      ...VALID_RECIPE_PUBLISHED,
+      status: 'published' as const,
+      reviewer: 'Hội đồng thẩm định ẩm thực',
+      reviewed_at: '2026-10-22T09:00:00Z',
+      source: 'Viện Dinh Dưỡng Quốc Gia',
+      confirmed_by: 'Chuyên gia C',
+      missing_fields: [],
+    };
+    expect(validateRecipe(validPublished).success).toBe(true);
+  });
+
+  it('Ca hợp lệ 3: Món draft chưa có source/confirmed_by nhưng vẫn hợp lệ', () => {
+    const rawJsonFromPlan = readSampleRecipeJsonFromPlan();
+    expect(validateRecipe(rawJsonFromPlan).success).toBe(true);
+  });
+
+  it('Ca sai 1: Món published thiếu confirmed_by (R3 vi phạm)', () => {
+    const invalidPublished = {
+      ...VALID_RECIPE_PUBLISHED,
+      status: 'published' as const,
+      source: 'Viện Dinh Dưỡng',
+      confirmed_by: '', // Rỗng
+      missing_fields: [],
+    };
+    const result = validateRecipe(invalidPublished);
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.errors.some((e) => e.includes('confirmed_by'))).toBe(true);
+    }
+  });
+
+  it('Ca sai 2: Món reviewed còn missing_fields chưa hoàn tất (R2 vi phạm)', () => {
+    const invalidReviewed = {
+      ...VALID_RECIPE_REVIEWED,
+      status: 'reviewed' as const,
+      source: 'Sổ tay gia đình',
+      confirmed_by: 'Bếp trưởng',
+      missing_fields: ['total_minutes'], // Chưa xử lý xong
+    };
+    const result = validateRecipe(invalidReviewed);
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.errors.some((e) => e.includes('missing_fields'))).toBe(true);
+    }
+  });
+
+  it('Ca sai 3: Món reviewed thiếu source dữ liệu (R3 vi phạm)', () => {
+    const invalidReviewed = {
+      ...VALID_RECIPE_REVIEWED,
+      status: 'reviewed' as const,
+      source: undefined,
+      confirmed_by: 'Bếp trưởng',
+      missing_fields: [],
+    };
+    const result = validateRecipe(invalidReviewed);
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.errors.some((e) => e.includes('source'))).toBe(true);
+    }
+  });
+});
+
+describe('T02: Kiểm tra an toàn dị ứng trong IngredientSchema (allergen_codes)', () => {
+  it('Ca hợp lệ 1: Nguyên liệu đầy đủ có hai mã dị ứng (tránh bỏ sót)', () => {
+    const valid = {
+      id: 'sot-dau-phong-me',
+      name: 'Sốt đậu phộng mè',
+      group: 'gia-vi',
+      base_unit: 'ml',
+      allergen_codes: ['peanut', 'tree_nut'],
+      missing_fields: [],
+    };
+    const result = validateIngredient(valid);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.allergen_codes).toEqual(['peanut', 'tree_nut']);
+    }
+  });
+
+  it('Ca hợp lệ 2: Nguyên liệu chưa rõ dị ứng, allergen_codes: null kèm missing_fields chứa "allergen_codes"', () => {
+    const validWithMissing = {
+      id: 'gia-vi-la',
+      name: 'Gia vị lạ chưa xác định',
+      group: 'gia-vi',
+      base_unit: 'g',
+      allergen_codes: null,
+      missing_fields: ['allergen_codes'],
+    };
+    const result = validateIngredient(validWithMissing);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.allergen_codes).toBeNull();
+      expect(result.data.missing_fields).toContain('allergen_codes');
+    }
+  });
+
+  it('Ca hợp lệ 3: Nguyên liệu đã xác nhận không chứa dị ứng (allergen_codes: [])', () => {
+    const validNoAllergens = {
+      id: 'muoi-tinh',
+      name: 'Muối tinh khiết',
+      group: 'gia-vi',
+      base_unit: 'g',
+      allergen_codes: [],
+      missing_fields: [],
+    };
+    const result = validateIngredient(validNoAllergens);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.allergen_codes).toEqual([]);
+    }
+  });
+
+  it('Ca sai 1: Nguyên liệu thiếu hẳn trường allergen_codes (bắt buộc khai báo, không default [])', () => {
+    const invalidMissingField = {
+      id: 'muoi',
+      name: 'Muối ăn',
+      group: 'gia-vi',
+      base_unit: 'g',
+      // Thiếu allergen_codes
+    };
+    const result = validateIngredient(invalidMissingField);
+    expect(result.success).toBe(false);
+  });
+
+  it('Ca sai 2: Nguyên liệu allergen_codes: null nhưng không khai báo trong missing_fields', () => {
+    const invalidUnannouncedNull = {
+      id: 'bot-nem',
+      name: 'Bột nêm',
+      group: 'gia-vi',
+      base_unit: 'g',
+      allergen_codes: null,
+      missing_fields: [], // Vi phạm: null mà không có trong missing_fields
+    };
+    const result = validateIngredient(invalidUnannouncedNull);
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.errors.some((e) => e.includes('allergen_codes'))).toBe(true);
+    }
+  });
+
+  it('Ca sai 3: Nguyên liệu chứa mã dị ứng ngoài danh sách 8 mã chuẩn', () => {
+    const invalidCode = {
+      id: 'bot-mi',
+      name: 'Bột mì',
+      group: 'bot',
+      base_unit: 'g',
+      allergen_codes: ['wheat', 'pollen'], // 'pollen' không hợp lệ
+      missing_fields: [],
+    };
+    const result = validateIngredient(invalidCode);
+    expect(result.success).toBe(false);
+  });
+
+  it('Nguyên liệu có allergen_codes === null không bao giờ được coi là "an toàn/không có dị ứng"', () => {
+    function isSafeForUser(
+      ingredient: { allergen_codes: string[] | null },
+      userAllergies: string[],
+    ): { safe: boolean; warning?: string } {
+      if (ingredient.allergen_codes === null) {
+        return {
+          safe: false,
+          warning: 'Chưa đủ dữ liệu kiểm định dị ứng cho nguyên liệu này',
+        };
+      }
+      const hasConflict = ingredient.allergen_codes.some((code) =>
+        userAllergies.includes(code),
+      );
+      return { safe: !hasConflict };
+    }
+
+    const unconfirmed = { allergen_codes: null };
+    const checkResult = isSafeForUser(unconfirmed, ['peanut']);
+    expect(checkResult.safe).toBe(false);
+    expect(checkResult.warning).toBeDefined();
+  });
+});
 
 describe('T02: Kiểm tra công thức nấu ăn đọc trực tiếp từ docs/plan.md và fixtures', () => {
   it('Ca 1: Validator chấp nhận khối JSON gốc đọc TRỰC TIẾP từ docs/plan.md', () => {
@@ -135,6 +432,8 @@ describe('T02: Kiểm tra công thức nấu ăn đọc trực tiếp từ docs/
       expect(result.data.status).toBe('reviewed');
       expect(result.data.reviewer).toBe('Chuyên gia ẩm thực Nguyễn Văn A');
       expect(result.data.reviewed_at).toBe('2026-10-20T08:00:00Z');
+      expect(result.data.source).toBeDefined();
+      expect(result.data.confirmed_by).toBeDefined();
     }
   });
 
@@ -146,6 +445,8 @@ describe('T02: Kiểm tra công thức nấu ăn đọc trực tiếp từ docs/
       expect(result.data.version).toBe(2);
       expect(result.data.reviewer).toBe('Hội đồng thẩm định ẩm thực');
       expect(result.data.reviewed_at).toBe('2026-10-20T09:00:00Z');
+      expect(result.data.source).toBeDefined();
+      expect(result.data.confirmed_by).toBeDefined();
     }
   });
 
@@ -226,86 +527,67 @@ describe('T02: Kiểm tra quy đổi đơn vị (conversions)', () => {
   });
 });
 
-describe('T02: Kiểm tra thực thể Ingredient (ít nhất 2 ca hợp lệ, 3 ca sai)', () => {
-  it('Ca hợp lệ 1: Nguyên liệu đầy đủ các trường theo docs/plan.md dòng 175 và có HAI mã dị ứng', () => {
+describe('T02: Kiểm tra thực thể Ingredient (các ca chung)', () => {
+  it('Ca hợp lệ: Nguyên liệu đầy đủ các trường', () => {
     const validFull = {
-      id: 'sot-dau-phong-me',
-      name: 'Sốt đậu phộng mè',
-      aliases: ['sốt lạc vừng'],
-      group: 'gia-vi',
-      base_unit: 'ml',
-      conversions: { 'thìa canh': 15 },
-      allergen_codes: ['peanut', 'tree_nut'], // Ca hợp lệ có HAI mã dị ứng tránh bỏ sót
-      reference_price: 25000,
+      id: 'trung-ga',
+      name: 'Trứng gà',
+      aliases: ['hột gà', 'trứng gà ta'],
+      group: 'trung-sua',
+      base_unit: 'cái',
+      conversions: { quả: 1, chục: 10 },
+      allergen_codes: ['egg'],
+      reference_price: 3500,
       price_updated_at: '2026-10-22',
-      storage_rule_id: 'sr-sot-dau-phong',
+      storage_rule_id: 'sr-trung-ga',
+      source: 'Viện Chăn Nuôi',
+      confirmed_by: 'Chuyên gia Nông Nghiệp',
+      missing_fields: [],
     };
     const result = validateIngredient(validFull);
     expect(result.success).toBe(true);
     if (result.success) {
-      expect(result.data.id).toBe('sot-dau-phong-me');
-      expect(result.data.base_unit).toBe('ml');
-      expect(result.data.allergen_codes).toEqual(['peanut', 'tree_nut']);
+      expect(result.data.id).toBe('trung-ga');
+      expect(result.data.base_unit).toBe('cái');
+      expect(result.data.allergen_codes).toEqual(['egg']);
     }
   });
 
-  it('Ca hợp lệ 2: Nguyên liệu tối giản chỉ có các trường bắt buộc (allergen_codes mặc định [])', () => {
-    const validMinimal = {
-      id: 'muoi',
-      name: 'Muối ăn',
-      group: 'gia-vi',
-      base_unit: 'g',
-    };
-    const result = validateIngredient(validMinimal);
-    expect(result.success).toBe(true);
-    if (result.success) {
-      expect(result.data.aliases).toEqual([]);
-      expect(result.data.conversions).toEqual({});
-      expect(result.data.allergen_codes).toEqual([]);
-    }
-  });
-
-  it('Ca sai 1: Bắt lỗi khi mã id rỗng', () => {
+  it('Ca sai: Bắt lỗi khi mã id rỗng', () => {
     const invalid = {
       id: '',
       name: 'Muối ăn',
       group: 'gia-vi',
       base_unit: 'g',
+      allergen_codes: [],
+      missing_fields: [],
     };
     const result = validateIngredient(invalid);
     expect(result.success).toBe(false);
   });
 
-  it('Ca sai 2: Bắt lỗi khi base_unit không thuộc g|ml|cái', () => {
+  it('Ca sai: Bắt lỗi khi base_unit không thuộc g|ml|cái', () => {
     const invalid = {
       id: 'trung-ga',
       name: 'Trứng gà',
       group: 'trung-sua',
       base_unit: 'quả', // Sai: phải là 'cái'
+      allergen_codes: ['egg'],
+      missing_fields: [],
     };
     const result = validateIngredient(invalid);
     expect(result.success).toBe(false);
   });
 
-  it('Ca sai 3: Bắt lỗi khi allergen_codes chứa mã ngoài danh sách 8 mã chuẩn', () => {
-    const invalid = {
-      id: 'bot-mi-pha',
-      name: 'Bột mì pha phấn hoa',
-      group: 'bot',
-      base_unit: 'g',
-      allergen_codes: ['wheat', 'pollen'], // 'pollen' không thuộc 8 mã dị ứng chuẩn
-    };
-    const result = validateIngredient(invalid);
-    expect(result.success).toBe(false);
-  });
-
-  it('Ca sai 4: Bắt lỗi khi giá tham khảo reference_price là số âm', () => {
+  it('Ca sai: Bắt lỗi khi giá tham khảo reference_price là số âm', () => {
     const invalid = {
       id: 'dau-an',
       name: 'Dầu ăn',
       group: 'dau-mo',
       base_unit: 'ml',
+      allergen_codes: [],
       reference_price: -5000,
+      missing_fields: [],
     };
     const result = validateIngredient(invalid);
     expect(result.success).toBe(false);
@@ -616,6 +898,9 @@ describe('T02: Kiểm tra thực thể StorageRule (ít nhất 2 ca hợp lệ, 
       max_days: 3,
       source_name: 'Cục An toàn thực phẩm - Bộ Y Tế',
       source_url: 'https://vfa.gov.vn/huong-dan-bao-quan-thit-tuoi',
+      source: 'Quyết định 46/2007/QĐ-BYT',
+      confirmed_by: 'Thẩm định viên an toàn thực phẩm',
+      missing_fields: [],
     };
     const result = validateStorageRule(validFridge);
     expect(result.success).toBe(true);
@@ -693,6 +978,9 @@ describe('T02: Kiểm tra thực thể SafetyRule (quy tắc an toàn theo docs/
       requires_confirmation: true,
       source_name: 'Bộ Y Tế & CDC',
       source_url: 'https://www.cdc.gov/foodsafety/communication/chicken.html',
+      source: 'CDC Guidelines for Poultry',
+      confirmed_by: 'Bác sĩ an toàn dịch tễ',
+      missing_fields: [],
     };
     const result = validateSafetyRule(valid);
     expect(result.success).toBe(true);

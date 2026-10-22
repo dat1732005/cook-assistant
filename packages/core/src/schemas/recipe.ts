@@ -174,6 +174,12 @@ export const RecipeSchema = z
       .default(1),
     // Mô tả ngắn về món ăn (tùy chọn)
     description: z.string().optional(),
+    // Nguồn dữ liệu công thức (bắt buộc theo R3 khi status là reviewed hoặc published)
+    source: z.string().optional(),
+    // Người xác nhận dữ liệu (bắt buộc theo R3 khi status là reviewed hoặc published)
+    confirmed_by: z.string().optional(),
+    // Danh sách các trường còn thiếu đang chờ dữ liệu theo R2 (mặc định [])
+    missing_fields: z.array(z.string()).default([]),
   })
   .superRefine((data, ctx) => {
     // Quy tắc kiểm tra 1: Bắt buộc phải có ít nhất một bước active (docs/plan.md dòng 298)
@@ -223,7 +229,7 @@ export const RecipeSchema = z
       });
     }
 
-    // Quy tắc kiểm tra 5: Trạng thái reviewed hoặc published bắt buộc có người và ngày kiểm duyệt (docs/plan.md dòng 299)
+    // Quy tắc kiểm tra 5: Trạng thái reviewed hoặc published bắt buộc có người, ngày kiểm duyệt, nguồn, người xác nhận và missing_fields rỗng (docs/plan.md dòng 299, R2, R3)
     if (data.status === 'reviewed' || data.status === 'published') {
       if (!data.reviewer || data.reviewer.trim() === '') {
         ctx.addIssue({
@@ -239,6 +245,30 @@ export const RecipeSchema = z
           path: ['reviewed_at'],
           message:
             'Món ăn ở trạng thái reviewed hoặc published bắt buộc phải có ngày kiểm duyệt (reviewed_at)',
+        });
+      }
+      if (!data.source || data.source.trim() === '') {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['source'],
+          message:
+            'Món ăn ở trạng thái reviewed hoặc published bắt buộc phải có nguồn dữ liệu (source) theo R3',
+        });
+      }
+      if (!data.confirmed_by || data.confirmed_by.trim() === '') {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['confirmed_by'],
+          message:
+            'Món ăn ở trạng thái reviewed hoặc published bắt buộc phải có người xác nhận (confirmed_by) theo R3',
+        });
+      }
+      if (data.missing_fields && data.missing_fields.length > 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['missing_fields'],
+          message:
+            'Món ăn ở trạng thái reviewed hoặc published không được còn trường thiếu (missing_fields phải rỗng) theo R2',
         });
       }
     }

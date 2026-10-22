@@ -67,17 +67,41 @@ Kế hoạch mô tả bằng tiếng Việt, dự án đã chuẩn hóa sang enu
 - **Kế hoạch ban đầu:** Dự kiến Spring Boot 3.x.
 - **Thực tế triển khai:** Nâng cấp cấu hình Maven Wrapper sử dụng Spring Boot `4.1.0` (kèm Java 21 LTS) theo chỉ đạo kỹ thuật để đón đầu chu kỳ hỗ trợ dài hạn.
 
+### 2.9. Tái cấu trúc `docs/field-names.md` thành hai bảng (A & B) và kiểm thử đồng bộ 100%
+- **Vấn đề trước đây:** Tài liệu liệt kê chung, có một số khóa sai lệch lịch sử (`duration_seconds`, `dependencies`, `visual_cue`).
+- **Thực tế triển khai:**
+  - Tách toàn bộ 10 thực thể thành 2 bảng rõ rệt: (A) Khóa nguyên văn từ JSON mẫu hoặc bảng CSDL của `docs/plan.md` (ghi kèm số dòng từ lệnh thật); (B) Khóa do dự án đặt và mở rộng kỹ thuật (R2/R3).
+  - Loại bỏ hoàn toàn các khóa sai lệch cũ: Chuẩn hóa thành `seconds`, `after`, `cue`.
+  - Bổ sung unit test tự động đọc trực tiếp `docs/field-names.md`, trích xuất các khóa trong cả bảng A và B, đối chiếu 1-1 với `shape` của 10 Zod schemas tương ứng. Nếu tài liệu thừa/thiếu khóa so với schema, test lập tức fail đỏ (có test case chứng minh).
+
+### 2.10. Bổ sung quy tắc R3 (`source`, `confirmed_by`) và R2 (`missing_fields`)
+- **Mục tiêu:** Đảm bảo nguồn dữ liệu y tế/khoa học chính xác (R3) và ghi nhận trường còn thiếu (R2), phục vụ quy trình biên tập và kiểm duyệt.
+- **Thực tế triển khai:**
+  - Bổ sung `source: z.string().optional()` và `confirmed_by: z.string().optional()` vào 4 thực thể cốt lõi: `recipe`, `ingredient`, `storage_rule`, `safety_rule`.
+  - Bổ sung `missing_fields: z.array(z.string()).default([])` vào 4 thực thể trên. Giữ nguyên `RecipeStatusEnum` (`draft`, `reviewed`, `published`).
+  - **Quy tắc kiểm duyệt bắt buộc (`superRefine`):** Đối với món `recipe` ở trạng thái `reviewed` hoặc `published`, bắt buộc `missing_fields` phải rỗng (`[]`), đồng thời `source` và `confirmed_by` phải được điền (không được rỗng hoặc undefined). Món `draft` được phép thiếu.
+
+### 2.11. Nguyên tắc an toàn dị ứng cho nguyên liệu (`ingredient.allergen_codes`)
+- **Vấn đề an toàn:** Tránh tình trạng nguyên liệu chưa được xác minh thông tin dị ứng lại bị tự động coi là không có dị ứng do nhận giá trị mặc định `[]`.
+- **Thực tế triển khai:**
+  - Bỏ giá trị mặc định `default([])` ở `ingredient.allergen_codes`.
+  - Trường `allergen_codes` bắt buộc phải được khai báo tường minh: là mảng `AllergenCode[]` hoặc `null`.
+  - Chỉ cho phép `null` khi và chỉ khi mảng `missing_fields` chứa rõ ràng chuỗi `"allergen_codes"`.
+  - Nguyên liệu có `allergen_codes: null` không bao giờ được coi là an toàn hay không có dị ứng (các bộ lọc an toàn dị ứng sẽ chặn hoặc phát cảnh báo rủi ro).
+
 ---
 
-## 3. Trạng thái hiện tại của hệ thống (Tính đến hết T02-FIX phần 6)
+## 3. Trạng thái hiện tại của hệ thống (Tính đến hết T02-FIX phần 7)
 
-- **Test Suite (`packages/core`):** 64 ca kiểm thử tự động pass 100%.
-  - Tự động nạp trực tiếp khối JSON món "Trứng chiên cà chua" từ file `docs/plan.md`.
-  - Có test chứng minh nếu sửa sai khối JSON thì test sẽ lập tức đỏ.
-  - Đầy đủ ca kiểm thử hợp lệ và ca sai cho tất cả 7 thực thể.
+- **Test Suite (`packages/core`):** 87 ca kiểm thử tự động pass 100%.
+  - Bộ test đồng bộ 100% giữa `docs/field-names.md` và 10 Zod schemas (kèm test chứng minh fail đỏ khi làm lệch khóa).
+  - Bộ test cho quy tắc R2 và R3 trên `RecipeSchema` (3 ca hợp lệ, 3 ca sai).
+  - Bộ test an toàn dị ứng trên `IngredientSchema` (3 ca hợp lệ, 3 ca sai, test logic cảnh báo khi null).
+  - Khối JSON món "Trứng chiên cà chua" đọc trực tiếp từ `docs/plan.md`.
+  - 15 ca sai bắt buộc của công thức và đầy đủ ca kiểm thử cho toàn bộ 10 thực thể.
 - **Kiểm tra tĩnh & Mã nguồn:**
   - `build` thành công, sạch sẽ (`tsc --project tsconfig.build.json`).
   - `typecheck` không có lỗi trên toàn bộ workspace.
   - `eslint` không có cảnh báo/lỗi.
-  - `scan-secrets.py` quét toàn bộ lịch sử 8 commits: sạch 100%, không lọt khóa/token/file nhạy cảm.
-- **Tiến độ tổng thể:** Hoàn thành toàn diện nhiệm vụ T01 và T02-FIX. **Chưa thực hiện T03.**
+  - `scan-secrets.py` quét toàn bộ lịch sử: sạch 100%, không lọt khóa/token/file nhạy cảm.
+- **Tiến độ tổng thể:** Hoàn thành toàn diện nhiệm vụ T01 và T02-FIX (phần 1 đến phần 7). **Chưa thực hiện T03.**

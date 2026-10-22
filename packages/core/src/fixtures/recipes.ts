@@ -159,6 +159,9 @@ export const VALID_RECIPE_REVIEWED = {
   status: 'reviewed' as const,
   reviewer: 'Chuyên gia ẩm thực Nguyễn Văn A',
   reviewed_at: '2026-10-20T08:00:00Z',
+  source: 'NXB Kim Đồng - Cẩm nang nấu ăn gia đình 2026',
+  confirmed_by: 'Chuyên gia ẩm thực Nguyễn Văn A',
+  missing_fields: [],
   tags: ['canh', 'thanh-nhiet'],
   equipment: ['noi', 'bep', 'dua'],
   ingredients: [
@@ -212,6 +215,9 @@ export const VALID_RECIPE_PUBLISHED = {
   status: 'published' as const,
   reviewer: 'Hội đồng thẩm định ẩm thực',
   reviewed_at: '2026-10-20T09:00:00Z',
+  source: 'Viện Dinh dưỡng Quốc gia - 100 món ăn truyền thống',
+  confirmed_by: 'Hội đồng thẩm định ẩm thực',
+  missing_fields: [],
   tags: ['kho', 'dam-da'],
   equipment: ['noi', 'bep', 'dao-thot'],
   ingredients: [
