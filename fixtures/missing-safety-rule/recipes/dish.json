@@ -1,0 +1,29 @@
+{
+  "slug": "mon-thieu-safety-rule",
+  "name": "Món thiếu quy tắc an toàn",
+  "servings_base": 2,
+  "difficulty": 1,
+  "equipment": ["chao"],
+  "ingredients": [
+    {
+      "ingredient": "trung-ga",
+      "qty": 2,
+      "unit": "cái",
+      "role": "structure"
+    }
+  ],
+  "steps": [
+    {
+      "id": "s1",
+      "title": "Nấu",
+      "kind": "active",
+      "seconds": 60,
+      "after": [],
+      "resources": ["chao"],
+      "text": "Nấu chín",
+      "safety_rule": "rule-unlisted"
+    }
+  ],
+  "status": "draft",
+  "synthetic": true
+}

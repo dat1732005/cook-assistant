@@ -1,0 +1,28 @@
+{
+  "slug": "mon-thieu-quy-doi",
+  "name": "Món thiếu quy đổi",
+  "servings_base": 2,
+  "difficulty": 1,
+  "equipment": ["chao"],
+  "ingredients": [
+    {
+      "ingredient": "trung-ga",
+      "qty": 1,
+      "unit": "thìa cà phê",
+      "role": "structure"
+    }
+  ],
+  "steps": [
+    {
+      "id": "s1",
+      "title": "Khuấy",
+      "kind": "active",
+      "seconds": 60,
+      "after": [],
+      "resources": ["chao"],
+      "text": "Khuấy đều"
+    }
+  ],
+  "status": "draft",
+  "synthetic": true
+}

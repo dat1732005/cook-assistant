@@ -1,0 +1,8 @@
+[
+  {
+    "id": "chao",
+    "name": "Chảo",
+    "missing_fields": ["source"],
+    "synthetic": true
+  }
+]

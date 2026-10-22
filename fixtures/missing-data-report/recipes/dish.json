@@ -1,0 +1,29 @@
+{
+  "slug": "mon-thieu-du-lieu",
+  "name": "Món đang hoàn thiện",
+  "servings_base": 2,
+  "difficulty": 1,
+  "equipment": ["chao"],
+  "ingredients": [
+    {
+      "ingredient": "thit-ga",
+      "qty": 200,
+      "unit": "g",
+      "role": "structure"
+    }
+  ],
+  "steps": [
+    {
+      "id": "s1",
+      "title": "Nấu",
+      "kind": "active",
+      "seconds": 60,
+      "after": [],
+      "resources": ["chao"],
+      "text": "Nấu gà"
+    }
+  ],
+  "status": "draft",
+  "missing_fields": ["description"],
+  "synthetic": true
+}

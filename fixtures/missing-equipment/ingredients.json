@@ -1,0 +1,11 @@
+[
+  {
+    "id": "trung-ga",
+    "name": "Trứng gà",
+    "group": "trung",
+    "base_unit": "cái",
+    "conversions": {},
+    "allergen_codes": ["egg"],
+    "synthetic": true
+  }
+]

@@ -1,0 +1,32 @@
+{
+  "slug": "mon-published-loi",
+  "name": "Món phát hành bị lỗi",
+  "servings_base": 2,
+  "difficulty": 1,
+  "equipment": ["chao"],
+  "ingredients": [
+    {
+      "ingredient": "trung-ga",
+      "qty": 2,
+      "unit": "cái",
+      "role": "structure"
+    }
+  ],
+  "steps": [
+    {
+      "id": "s1",
+      "title": "Nấu",
+      "kind": "active",
+      "seconds": 60,
+      "after": [],
+      "resources": ["chao"],
+      "text": "Nấu chín"
+    }
+  ],
+  "status": "published",
+  "source": "Sách ẩm thực",
+  "reviewer": "Kiểm duyệt viên",
+  "reviewed_at": "2026-10-22T08:00:00Z",
+  "missing_fields": ["tags"],
+  "synthetic": true
+}
