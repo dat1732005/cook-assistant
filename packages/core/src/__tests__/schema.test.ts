@@ -103,6 +103,7 @@ function parseFieldNamesDoc(): Record<string, string[]> {
   const result: Record<string, string[]> = {};
 
   for (const section of sections) {
+    if (section.includes('Chờ duyệt') || section.includes('Đang chờ duyệt')) continue;
     const headerMatch = section.match(/##\s+\d+\.\s+.*?`([a-z_]+)`/);
     if (!headerMatch || !headerMatch[1]) continue;
     const entityName = headerMatch[1];
@@ -120,6 +121,104 @@ function parseFieldNamesDoc(): Record<string, string[]> {
   }
 
   return result;
+}
+
+interface ParsedTableARow {
+  entity: string;
+  key: string;
+  lineNumbers: number[];
+}
+
+interface ParsedTableBRow {
+  entity: string;
+  key: string;
+  vietnameseDesc: string;
+  lineNumbers: number[];
+  isProjectAdded: boolean;
+}
+
+/**
+ * Đọc toàn bộ nội dung docs/plan.md theo từng dòng (1-indexed).
+ */
+function readPlanLines(): string[] {
+  const currentDir = path.dirname(fileURLToPath(import.meta.url));
+  const candidatePaths = [
+    path.resolve(currentDir, '../../../../docs/plan.md'),
+    path.resolve(process.cwd(), 'docs/plan.md'),
+    path.resolve(process.cwd(), '../../docs/plan.md'),
+  ];
+  const planPath = candidatePaths.find((p) => fs.existsSync(p));
+  if (!planPath) {
+    throw new Error('Không tìm thấy file docs/plan.md');
+  }
+  return fs.readFileSync(planPath, 'utf8').split('\n');
+}
+
+/**
+ * Trích xuất danh sách dòng trong Bảng A và Bảng B của docs/field-names.md
+ */
+function parseFieldNamesDetailedTables(): {
+  tableARows: ParsedTableARow[];
+  tableBRows: ParsedTableBRow[];
+} {
+  const currentDir = path.dirname(fileURLToPath(import.meta.url));
+  const candidatePaths = [
+    path.resolve(currentDir, '../../../../docs/field-names.md'),
+    path.resolve(process.cwd(), 'docs/field-names.md'),
+    path.resolve(process.cwd(), '../../docs/field-names.md'),
+  ];
+  const docPath = candidatePaths.find((p) => fs.existsSync(p));
+  if (!docPath) {
+    throw new Error('Không tìm thấy file docs/field-names.md');
+  }
+  const content = fs.readFileSync(docPath, 'utf8');
+  const sections = content.split(/\n(?=##\s+\d+\.)/);
+
+  const tableARows: ParsedTableARow[] = [];
+  const tableBRows: ParsedTableBRow[] = [];
+
+  for (const section of sections) {
+    if (section.includes('Chờ duyệt') || section.includes('Đang chờ duyệt')) continue;
+    const headerMatch = section.match(/##\s+\d+\.\s+.*?`([a-z_]+)`/);
+    if (!headerMatch || !headerMatch[1]) continue;
+    const entity = headerMatch[1];
+
+    const parts = section.split(/###\s+Bảng\s+[AB]:/);
+    if (parts[1]) {
+      const lines = parts[1].split('\n');
+      for (const line of lines) {
+        const row = line.match(/^\|\s*`([a-z0-9_]+)`\s*\|\s*([^|]+)\|\s*([^|]+)\|/);
+        if (row && row[1]) {
+          const key = row[1];
+          const lineNums = (row[3].match(/\d+/g) || []).map(Number);
+          tableARows.push({ entity, key, lineNumbers: lineNums });
+        }
+      }
+    }
+
+    if (parts[2]) {
+      const lines = parts[2].split('\n');
+      for (const line of lines) {
+        const row = line.match(/^\|\s*`([a-z0-9_]+)`\s*\|\s*([^|]+)\|\s*([^|]+)\|/);
+        if (row && row[1]) {
+          const key = row[1];
+          const desc = row[2].trim();
+          const lineStr = row[3].trim();
+          const isDash = lineStr.includes('—');
+          const lineNums = (lineStr.match(/\d+/g) || []).map(Number);
+          tableBRows.push({
+            entity,
+            key,
+            vietnameseDesc: desc,
+            lineNumbers: lineNums,
+            isProjectAdded: isDash,
+          });
+        }
+      }
+    }
+  }
+
+  return { tableARows, tableBRows };
 }
 
 describe('T02: Kiểm tra đồng bộ 100% giữa docs/field-names.md và Zod Schemas', () => {
@@ -155,6 +254,54 @@ describe('T02: Kiểm tra đồng bộ 100% giữa docs/field-names.md và Zod S
     });
   }
 
+  it('Bảng A: Mỗi khóa tiếng Anh phải xuất hiện nguyên văn trong dòng plan.md mà tài liệu dẫn', () => {
+    const planLines = readPlanLines();
+    const { tableARows } = parseFieldNamesDetailedTables();
+
+    expect(tableARows.length).toBeGreaterThan(0);
+    for (const row of tableARows) {
+      expect(
+        row.lineNumbers.length,
+        `Khóa ${row.entity}.${row.key} trong Bảng A phải dẫn ít nhất một số dòng thật trong plan.md`,
+      ).toBeGreaterThan(0);
+
+      for (const lineNum of row.lineNumbers) {
+        const lineContent = planLines[lineNum - 1] || '';
+        expect(
+          lineContent.includes(row.key),
+          `Khóa "${row.key}" của thực thể "${row.entity}" không xuất hiện nguyên văn trong dòng ${lineNum} của docs/plan.md.\nNội dung dòng: "${lineContent}"`,
+        ).toBe(true);
+      }
+    }
+  });
+
+  it('Bảng B: Mỗi dòng dẫn plan.md phải chứa nguyên văn phần mô tả tiếng Việt; trường do dự án thêm phải ghi "—" ở cột dòng', () => {
+    const planLines = readPlanLines();
+    const { tableBRows } = parseFieldNamesDetailedTables();
+
+    expect(tableBRows.length).toBeGreaterThan(0);
+    for (const row of tableBRows) {
+      if (row.isProjectAdded) {
+        // Trường do dự án thêm: cột dòng phải ghi "—" và không có số dòng cụ thể của kế hoạch
+        expect(row.lineNumbers.length).toBe(0);
+      } else {
+        // Trường kế hoạch có mô tả tiếng Việt: phải có dòng dẫn và dòng đó phải chứa nguyên văn mô tả
+        expect(
+          row.lineNumbers.length,
+          `Trường ${row.entity}.${row.key} trong Bảng B không có số dòng dẫn và cũng không có dấu "—"`,
+        ).toBeGreaterThan(0);
+
+        for (const lineNum of row.lineNumbers) {
+          const lineContent = planLines[lineNum - 1] || '';
+          expect(
+            lineContent.includes(row.vietnameseDesc),
+            `Mô tả tiếng Việt "${row.vietnameseDesc}" của trường "${row.entity}.${row.key}" không xuất hiện nguyên văn trong dòng ${lineNum} của docs/plan.md.\nNội dung dòng: "${lineContent}"`,
+          ).toBe(true);
+        }
+      }
+    }
+  });
+
   it('Chứng minh test sẽ đỏ (fail) nếu cố ý làm lệch một khóa giữa tài liệu và schema', () => {
     const realRecipeKeys = Object.keys(RecipeSchema.shape);
     // Cố ý giả lập tài liệu có thêm khóa lạ không tồn tại trong schema
@@ -167,6 +314,30 @@ describe('T02: Kiểm tra đồng bộ 100% giữa docs/field-names.md và Zod S
     // Cố ý giả lập tài liệu bị thiếu một khóa quan trọng
     const tamperedMissingDocKeys = realRecipeKeys.filter((k) => k !== 'slug').sort();
     expect(tamperedMissingDocKeys).not.toEqual(sortedSchemaKeys);
+  });
+
+  it('Chứng minh test sẽ đỏ (fail) nếu cố ý dẫn sai dòng trong Bảng A hoặc Bảng B', () => {
+    const planLines = readPlanLines();
+
+    // Giả lập 1: Bảng A dẫn sai dòng (ví dụ "servings_base" dẫn dòng 1 thay vì 207)
+    const badTableARow: ParsedTableARow = {
+      entity: 'recipe',
+      key: 'servings_base',
+      lineNumbers: [1], // Dòng 1 không có "servings_base"
+    };
+    const lineContentA = planLines[badTableARow.lineNumbers[0] - 1] || '';
+    expect(lineContentA.includes(badTableARow.key)).toBe(false);
+
+    // Giả lập 2: Bảng B dẫn sai dòng (ví dụ "tổng phút" dẫn dòng 1 thay vì 176)
+    const badTableBRow: ParsedTableBRow = {
+      entity: 'recipe',
+      key: 'total_minutes',
+      vietnameseDesc: 'tổng phút',
+      lineNumbers: [1], // Dòng 1 không có "tổng phút"
+      isProjectAdded: false,
+    };
+    const lineContentB = planLines[badTableBRow.lineNumbers[0] - 1] || '';
+    expect(lineContentB.includes(badTableBRow.vietnameseDesc)).toBe(false);
   });
 });
 

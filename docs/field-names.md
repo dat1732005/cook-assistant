@@ -13,28 +13,28 @@ Tài liệu này ghi nhận mọi tên trường và giá trị liệt kê (enum
 ### Bảng A: Khóa nguyên văn từ docs/plan.md
 | Khóa schema | Nguồn trích xuất trong docs/plan.md | Dòng plan.md | Ghi chú kế hoạch |
 | --- | --- | --- | --- |
-| `slug` | Khóa slug định danh | 176, 194, 205 | `"slug": "trung-chien-ca-chua"` |
+| `slug` | Khóa slug định danh | 205 | `"slug": "trung-chien-ca-chua"` |
 | `name` | Tên món ăn | 206 | `"name": "Trứng chiên cà chua"` |
 | `servings_base` | Số phần ăn cơ sở | 207 | `"servings_base": 2` |
-| `difficulty` | Độ khó (1-3) | 176, 208 | `"difficulty": 1` |
+| `difficulty` | Độ khó (1-3) | 208 | `"difficulty": 1` |
 | `equipment` | Danh sách dụng cụ yêu cầu | 209 | `"equipment": ["chao", "to", "dao-thot"]` |
 | `ingredients` | Danh sách nguyên liệu | 210 | `"ingredients": [...]` |
 | `steps` | Danh sách các bước nấu | 218 | `"steps": [...]` |
 | `id` | Mã định danh CSDL | 176 | Cột `id` bảng `recipe` |
-| `status` | Trạng thái kiểm duyệt | 176 | Enum: `draft`, `reviewed`, `published` |
 
 ### Bảng B: Tên do dự án đặt và mở rộng theo quy tắc R2/R3
 | Khóa schema | Mô tả tiếng Việt trong docs/plan.md / Quy tắc | Dòng plan.md | Kiểu dữ liệu / Quy ước |
 | --- | --- | --- | --- |
 | `total_minutes` | tổng phút | 176 | `number` (positive) |
 | `tags` | thẻ (kho, xào, canh...) | 176 | `string[]` |
+| `status` | trạng thái | 176 | Enum: `draft`, `reviewed`, `published` |
 | `reviewer` | người kiểm duyệt | 176 | `string` (optional) |
 | `reviewed_at` | ngày kiểm duyệt | 176 | `string` (ISO datetime/date, optional) |
 | `version` | phiên bản | 176 | `number` (int, >= 1, default 1) |
-| `description` | mô tả ngắn món ăn | Tùy chọn | `string` (optional) |
-| `source` | nguồn dữ liệu thật theo quy tắc R3 | docs/tasks.md R3 | `string` (bắt buộc khi reviewed/published) |
-| `confirmed_by` | người xác nhận dữ liệu theo quy tắc R3 | docs/tasks.md R3 | `string` (bắt buộc khi reviewed/published) |
-| `missing_fields` | danh sách trường thiếu theo quy tắc R2 | docs/tasks.md R2 | `string[]` (bắt buộc rỗng khi reviewed/published) |
+| `description` | THÊM, kế hoạch không có: mô tả ngắn món ăn | — | `string` (optional) |
+| `source` | THÊM, kế hoạch không có: nguồn dữ liệu thật theo quy tắc R3 | — | `string` (bắt buộc khi reviewed/published) |
+| `confirmed_by` | THÊM, kế hoạch không có: người xác nhận dữ liệu theo quy tắc R3 | — | `string` (bắt buộc khi reviewed/published) |
+| `missing_fields` | THÊM, kế hoạch không có: danh sách trường thiếu theo quy tắc R2 | — | `string[]` (bắt buộc rỗng khi reviewed/published) |
 
 ---
 
@@ -43,11 +43,11 @@ Tài liệu này ghi nhận mọi tên trường và giá trị liệt kê (enum
 ### Bảng A: Khóa nguyên văn từ docs/plan.md
 | Khóa schema | Nguồn trích xuất trong docs/plan.md | Dòng plan.md | Ghi chú kế hoạch |
 | --- | --- | --- | --- |
-| `ingredient` | Mã/slug nguyên liệu | 177, 211 | `"ingredient": "trung-ga"` (CSDL: `ingredient_id`) |
+| `ingredient` | Mã/slug nguyên liệu | 211 | `"ingredient": "trung-ga"` (CSDL: `ingredient_id`) |
 | `qty` | Lượng nguyên liệu | 211 | `"qty": 3` |
 | `unit` | Đơn vị đo lường | 211 | `"unit": "quả"` |
-| `role` | Vai trò nguyên liệu | 177, 211 | Enum: `flavor`, `structure`, `moisture`, `preservation`, `color` |
-| `flavor_group` | Nhóm vị chủ đạo | 212, 234 | Enum: `salt`, `sugar`, `acid`, `fat`, `spice`, `none` |
+| `role` | Vai trò nguyên liệu | 211 | Enum: `flavor`, `structure`, `moisture`, `preservation`, `color` |
+| `flavor_group` | Nhóm vị chủ đạo | 212 | Enum: `salt`, `sugar`, `acid`, `fat`, `spice`, `none` |
 | `optional` | Tùy chọn có thể bỏ | 213 | `"optional": true` (boolean, default false) |
 
 ### Bảng B: Tên do dự án đặt
@@ -63,15 +63,15 @@ Tài liệu này ghi nhận mọi tên trường và giá trị liệt kê (enum
 ### Bảng A: Khóa nguyên văn từ docs/plan.md
 | Khóa schema | Nguồn trích xuất trong docs/plan.md | Dòng plan.md | Ghi chú kế hoạch |
 | --- | --- | --- | --- |
-| `id` | Mã bước nấu | 178, 219 | `"id": "s1"` |
+| `id` | Mã bước nấu | 219 | `"id": "s1"` |
 | `title` | Tiêu đề ngắn của bước | 219 | `"title": "Cắt cà chua"` |
-| `kind` | Loại bước | 219, 230 | Enum: `active`, `passive` |
-| `seconds` | Thời lượng tính bằng giây | 219, 252 | `"seconds": 120` (thay thế tên sai duration_seconds) |
-| `after` | Các bước phải xong trước | 219, 231 | `"after": ["s2"]` (thay thế tên sai dependencies) |
-| `resources` | Dụng cụ bị chiếm dụng | 219, 232 | `"resources": ["chao"]` |
-| `cue` | Dấu hiệu nhận biết cảm quan | 221, 233 | `"cue": "Mặt dưới vàng nhẹ thì lật"` (thay thế visual_cue) |
+| `kind` | Loại bước | 219 | Enum: `active`, `passive` |
+| `seconds` | Thời lượng tính bằng giây | 219 | `"seconds": 120` (thay thế tên sai duration_seconds) |
+| `after` | Các bước phải xong trước | 219 | `"after": ["s2"]` (thay thế tên sai dependencies) |
+| `resources` | Dụng cụ bị chiếm dụng | 219 | `"resources": ["chao"]` |
+| `cue` | Dấu hiệu nhận biết cảm quan | 221 | `"cue": "Mặt dưới vàng nhẹ thì lật"` (thay thế visual_cue) |
 | `text` | Nội dung hướng dẫn thao tác | 219 | `"text": "Cho dầu vào chảo..."` |
-| `safety_rule` | Mã quy tắc an toàn gắn với bước | 178, 236 | Cột `mã quy tắc an toàn`, mục 236 `safety_rule` |
+| `safety_rule` | Mã quy tắc an toàn gắn với bước | 236 | Mục 236 `safety_rule` |
 
 ### Bảng B: Tên do dự án đặt
 | Khóa schema | Mô tả tiếng Việt trong docs/plan.md | Dòng plan.md | Kiểu dữ liệu / Quy ước |
@@ -86,7 +86,7 @@ Tài liệu này ghi nhận mọi tên trường và giá trị liệt kê (enum
 ### Bảng A: Khóa nguyên văn từ docs/plan.md
 | Khóa schema | Nguồn trích xuất trong docs/plan.md | Dòng plan.md | Ghi chú kế hoạch |
 | --- | --- | --- | --- |
-| `id` | Mã slug nguyên liệu | 175, 194 | `id (slug)` |
+| `id` | Mã slug nguyên liệu | 175 | `id (slug)` |
 
 ### Bảng B: Tên do dự án đặt và mở rộng theo quy tắc R2/R3
 | Khóa schema | Mô tả tiếng Việt trong docs/plan.md / Quy tắc | Dòng plan.md | Kiểu dữ liệu / Quy ước |
@@ -94,15 +94,15 @@ Tài liệu này ghi nhận mọi tên trường và giá trị liệt kê (enum
 | `name` | tên chuẩn | 175 | `string` (min 1) |
 | `aliases` | tên gọi khác (danh sách) | 175 | `string[]` (default []) |
 | `group` | nhóm | 175 | `string` (min 1) |
-| `base_unit` | đơn vị gốc (`g`, `ml` hoặc `cái`) | 175 | Enum: `'g' \| 'ml' \| 'cái'` |
-| `conversions` | bảng quy đổi (ví dụ thìa canh sang `ml`) | 175 | `Record<string, number>` |
-| `allergen_codes` | mã dị ứng (bắt buộc khai báo, null khi thiếu) | 175 | `AllergenCode[] \| null` (chỉ được null khi có trong missing_fields) |
+| `base_unit` | đơn vị gốc | 175 | Enum: `'g' \| 'ml' \| 'cái'` |
+| `conversions` | bảng quy đổi | 175 | `Record<string, number>` |
+| `allergen_codes` | mã dị ứng | 175 | `AllergenCode[] \| null` (chỉ được null khi có trong missing_fields) |
 | `reference_price` | giá tham khảo theo đơn vị gốc | 175 | `number` (non-negative, nullable/optional) |
 | `price_updated_at` | ngày cập nhật giá | 175 | `string` (nullable/optional) |
 | `storage_rule_id` | mã quy tắc bảo quản | 175 | `string` (nullable/optional) |
-| `source` | nguồn trích dẫn dữ liệu theo R3 | docs/tasks.md R3 | `string` (optional) |
-| `confirmed_by` | người xác nhận dữ liệu theo R3 | docs/tasks.md R3 | `string` (optional) |
-| `missing_fields` | danh sách trường còn thiếu theo R2 | docs/tasks.md R2 | `string[]` (default []) |
+| `source` | THÊM, kế hoạch không có: nguồn trích dẫn dữ liệu theo R3 | — | `string` (optional) |
+| `confirmed_by` | THÊM, kế hoạch không có: người xác nhận dữ liệu theo R3 | — | `string` (optional) |
+| `missing_fields` | THÊM, kế hoạch không có: danh sách trường còn thiếu theo R2 | — | `string[]` (default []) |
 
 ---
 
@@ -123,7 +123,7 @@ Tài liệu này ghi nhận mọi tên trường và giá trị liệt kê (enum
 | `added_at` | ngày thêm | 179 | `string` (min 1, ISO/date) |
 | `opened_at` | ngày mở | 179 | `string` (nullable/optional) |
 | `expiry_date` | hạn dùng | 179 | `string` (nullable/optional) |
-| `source` | nguồn (`manual`, `cook`, `shopping`, `photo`) | 179 | Enum: `'manual' \| 'cook' \| 'shopping' \| 'photo'` |
+| `source` | nguồn | 179 | Enum: `'manual' \| 'cook' \| 'shopping' \| 'photo'` |
 
 ---
 
@@ -135,12 +135,12 @@ Tài liệu này ghi nhận mọi tên trường và giá trị liệt kê (enum
 | `id` | Mã sự kiện kho | 180 | Cột `id` |
 | `pantry_item_id` | Mã mục kho biến động | 180 | Cột `pantry_item_id` |
 | `delta` | thay đổi (`delta`) | 180 | `number` (dương: nhập, âm: xuất) |
-| `cook_session_id` | Phiên nấu liên quan | 180, 278 | Cột `cook_session_id` |
+| `cook_session_id` | Phiên nấu liên quan | 180 | Cột `cook_session_id` |
 
 ### Bảng B: Tên do dự án đặt
 | Khóa schema | Mô tả tiếng Việt trong docs/plan.md | Dòng plan.md | Kiểu dữ liệu / Quy ước |
 | --- | --- | --- | --- |
-| `reason` | lý do (`cook`, `adjust`, `discard`, `buy`) | 180 | Enum: `'cook' \| 'adjust' \| 'discard' \| 'buy'` |
+| `reason` | lý do | 180 | Enum: `'cook' \| 'adjust' \| 'discard' \| 'buy'` |
 | `created_at` | thời điểm | 180 | `string` (ISO datetime) |
 
 ---
@@ -158,13 +158,13 @@ Tài liệu này ghi nhận mọi tên trường và giá trị liệt kê (enum
 | --- | --- | --- | --- |
 | `recipe_version` | phiên bản công thức | 181 | `number` (int, >= 1) |
 | `servings` | số phần | 181 | `number` (int, >= 1) |
-| `optimization_mode` | tiêu chí tối ưu | 181, 252 | Enum: `'fastest' \| 'fewest_tools'` |
+| `optimization_mode` | tiêu chí tối ưu | 181 | Enum: `'fastest' \| 'fewest_tools'` |
 | `started_at` | bắt đầu | 181 | `string` (ISO datetime) |
 | `completed_at` | kết thúc | 181 | `string` (nullable/optional) |
-| `status` | trạng thái (`cooking`, `done`, `abandoned`) | 181, 304 | Enum: `'cooking' \| 'done' \| 'abandoned'` |
-| `step_states` | trạng thái từng bước (JSON) | 181 | `Record<string, string>` |
-| `removed_or_substituted` | nguyên liệu đã bỏ hoặc thay (JSON) | 181, 316 | `Record<string, string \| null>` |
-| `running_timers` | hẹn giờ đang chạy (JSON, có `endsAt`) | 147, 181, 409 | `Array<{ id, step_id?, endsAt }>` (khóa con `endsAt` giữ camelCase) |
+| `status` | trạng thái | 181 | Enum: `'cooking' \| 'done' \| 'abandoned'` |
+| `step_states` | trạng thái từng bước | 181 | `Record<string, string>` |
+| `removed_or_substituted` | nguyên liệu đã bỏ hoặc thay | 181 | `Record<string, string \| null>` |
+| `running_timers` | hẹn giờ đang chạy | 181 | `Array<{ id, step_id?, endsAt }>` (khóa con `endsAt` giữ camelCase) |
 
 ---
 
@@ -180,9 +180,9 @@ Tài liệu này ghi nhận mọi tên trường và giá trị liệt kê (enum
 | --- | --- | --- | --- |
 | `display_name` | tên hiển thị | 174 | `string` (optional) |
 | `servings` | số người ăn | 174 | `number` (int, >= 1, default 2) |
-| `allergies` | dị ứng (danh sách mã) | 174 | `AllergenCode[]` (default []) |
+| `allergies` | dị ứng | 174 | `AllergenCode[]` (default []) |
 | `dietary_preference` | chế độ ăn | 174 | `string` (optional) |
-| `essential_spices` | gia vị cơ bản đang có (danh sách `ingredient_id`) | 174 | `string[]` (default []) |
+| `essential_spices` | gia vị cơ bản đang có | 174 | `string[]` (default []) |
 | `available_equipment` | dụng cụ đang có | 174 | `string[]` (default []) |
 
 ---
@@ -198,36 +198,35 @@ Tài liệu này ghi nhận mọi tên trường và giá trị liệt kê (enum
 | Khóa schema | Mô tả tiếng Việt trong docs/plan.md / Quy tắc | Dòng plan.md | Kiểu dữ liệu / Quy ước |
 | --- | --- | --- | --- |
 | `target_id_or_group` | `ingredient_id` hoặc nhóm | 183 | `string` (min 1) |
-| `state` | trạng thái (tươi, đã mở, đã nấu) | 183 | Enum: `'fresh' \| 'opened' \| 'cooked'` |
-| `location` | vị trí (ngăn mát, ngăn đá, nhiệt độ phòng) | 183 | Enum: `'fridge' \| 'freezer' \| 'room_temperature'` |
+| `state` | trạng thái | 183 | Enum: `'fresh' \| 'opened' \| 'cooked'` |
+| `location` | vị trí | 183 | Enum: `'fridge' \| 'freezer' \| 'room_temperature'` |
 | `max_days` | số ngày tối đa | 183 | `number` (non-negative) |
-| `source_name` | tên nguồn | 183, 197 | `string` (min 1) |
-| `source_url` | đường dẫn nguồn | 183, 197 | `string` (min 1) |
-| `source` | nguồn trích dẫn dữ liệu theo R3 | docs/tasks.md R3 | `string` (optional) |
-| `confirmed_by` | người xác nhận dữ liệu theo R3 | docs/tasks.md R3 | `string` (optional) |
-| `missing_fields` | danh sách trường còn thiếu theo R2 | docs/tasks.md R2 | `string[]` (default []) |
+| `source_name` | tên nguồn | 183 | `string` (min 1) |
+| `source_url` | đường dẫn nguồn | 183 | `string` (min 1) |
+| `source` | THÊM, kế hoạch không có: nguồn trích dẫn dữ liệu theo R3 | — | `string` (optional) |
+| `confirmed_by` | THÊM, kế hoạch không có: người xác nhận dữ liệu theo R3 | — | `string` (optional) |
+| `missing_fields` | THÊM, kế hoạch không có: danh sách trường còn thiếu theo R2 | — | `string[]` (default []) |
 
 ---
 
 ## 10. Thực thể `safety_rule` (Quy tắc an toàn thực phẩm)
 
 ### Bảng A: Khóa nguyên văn từ docs/plan.md
-| Khóa schema | Nguồn trích xuất trong docs/plan.md | Dòng plan.md | Ghi chú kế hoạch |
-| --- | --- | --- | --- |
-| `id` | Mã quy tắc an toàn | 178, 236 | `mã quy tắc an toàn`, `safety_rule` |
+*(Kế hoạch không định nghĩa bảng CSDL riêng cho safety_rule; khóa `safety_rule` chỉ xuất hiện ở bước nấu trong thực thể `recipe_step` dòng 236).*
 
 ### Bảng B: Tên do dự án đặt và mở rộng theo quy tắc R2/R3
 | Khóa schema | Mô tả tiếng Việt trong docs/plan.md / Quy tắc | Dòng plan.md | Kiểu dữ liệu / Quy ước |
 | --- | --- | --- | --- |
-| `title` | Tiêu đề cảnh báo an toàn | 178, 236 | `string` (min 1) |
-| `category` | Phân loại an toàn | 178, 236 | Enum: `'temperature' \| 'cross_contamination' \| 'hygiene' \| 'storage' \| 'allergy'` |
-| `description` | Nội dung chi tiết quy tắc an toàn | 178, 236 | `string` (min 1) |
-| `requires_confirmation` | Bắt xác nhận trước khi tiếp tục | 236 | `boolean` (default false) |
-| `source_name` | Tên nguồn trích dẫn an toàn | 178, 236 | `string` (optional) |
-| `source_url` | Đường dẫn tra cứu tài liệu | 178, 236 | `string` (optional) |
-| `source` | Nguồn trích dẫn dữ liệu theo R3 | docs/tasks.md R3 | `string` (optional) |
-| `confirmed_by` | Người xác nhận dữ liệu theo R3 | docs/tasks.md R3 | `string` (optional) |
-| `missing_fields` | Danh sách trường còn thiếu theo R2 | docs/tasks.md R2 | `string[]` (default []) |
+| `id` | THÊM, kế hoạch không có: định danh quy tắc an toàn khi tách bảng độc lập | — | `string` (min 1) |
+| `title` | THÊM, kế hoạch không có: tiêu đề cảnh báo an toàn | — | `string` (min 1) |
+| `category` | THÊM, kế hoạch không có: phân loại nhóm an toàn | — | Enum: `'temperature' \| 'cross_contamination' \| 'hygiene' \| 'storage' \| 'allergy'` |
+| `description` | THÊM, kế hoạch không có: nội dung hướng dẫn an toàn chi tiết | — | `string` (min 1) |
+| `requires_confirmation` | THÊM, kế hoạch không có: cờ bắt xác nhận trước khi tiếp tục | — | `boolean` (default false) |
+| `source_name` | THÊM, kế hoạch không có: tên nguồn trích dẫn quy chuẩn an toàn | — | `string` (optional) |
+| `source_url` | THÊM, kế hoạch không có: đường dẫn tài liệu tra cứu quy chuẩn | — | `string` (optional) |
+| `source` | THÊM, kế hoạch không có: nguồn trích dẫn dữ liệu theo R3 | — | `string` (optional) |
+| `confirmed_by` | THÊM, kế hoạch không có: người xác nhận dữ liệu theo R3 | — | `string` (optional) |
+| `missing_fields` | THÊM, kế hoạch không có: danh sách trường còn thiếu theo R2 | — | `string[]` (default []) |
 
 ---
 
@@ -238,4 +237,21 @@ Tài liệu này ghi nhận mọi tên trường và giá trị liệt kê (enum
 | `StorageStateEnum` | `'fresh'`<br>`'opened'`<br>`'cooked'` | `tươi`<br>`đã mở`<br>`đã nấu` | `storage_rule.state` (dòng 183) |
 | `StorageLocationEnum` | `'fridge'`<br>`'freezer'`<br>`'room_temperature'` | `ngăn mát`<br>`ngăn đá`<br>`nhiệt độ phòng` | `storage_rule.location` (dòng 183) |
 | `OptimizationModeEnum` | `'fastest'`<br>`'fewest_tools'` | `tiêu chí tối ưu`<br>(nhanh nhất, ít dụng cụ nhất) | `cook_session.optimization_mode` (dòng 181, mục T04.1) |
-| `SafetyCategoryEnum` | `'temperature'`<br>`'cross_contamination'`<br>`'hygiene'`<br>`'storage'`<br>`'allergy'` | Phân loại quy tắc an toàn thực phẩm (nhiệt độ, nhiễm khuẩn chéo, vệ sinh, bảo quản, dị ứng) | `safety_rule.category` (dòng 178, 236) |
+| `SafetyCategoryEnum` | `'temperature'`<br>`'cross_contamination'`<br>`'hygiene'`<br>`'storage'`<br>`'allergy'` | THÊM, kế hoạch không có: phân loại quy tắc an toàn thực phẩm khi tách thành thực thể độc lập | `safety_rule.category` |
+
+---
+
+## 12. Thực thể đề xuất: `equipment` (Dụng cụ nấu ăn - Đang chờ duyệt)
+*(Kế hoạch chưa có schema cho equipment; đề xuất các trường sau vào docs/field-names.md và chờ duyệt trước khi đưa vào mã nguồn)*
+
+### Bảng A: Khóa nguyên văn từ docs/plan.md
+*(Không có bảng CSDL equipment trong docs/plan.md)*
+
+### Bảng B: Tên do dự án đặt và đề xuất (Chờ duyệt)
+| Khóa schema | Mô tả tiếng Việt trong docs/plan.md / Quy tắc | Dòng plan.md | Kiểu dữ liệu / Quy ước |
+| --- | --- | --- | --- |
+| `id` | THÊM, kế hoạch không có: định danh dụng cụ (slug khớp với danh sách equipment trong recipe) | — | `string` |
+| `name` | THÊM, kế hoạch không có: tên hiển thị tiếng Việt của dụng cụ | — | `string` |
+| `source` | THÊM, kế hoạch không có: nguồn trích dẫn dữ liệu theo R3 | — | `string` (optional) |
+| `confirmed_by` | THÊM, kế hoạch không có: người xác nhận dữ liệu theo R3 | — | `string` (optional) |
+| `missing_fields` | THÊM, kế hoạch không có: danh sách trường còn thiếu theo R2 | — | `string[]` (default []) |
