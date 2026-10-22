@@ -7,10 +7,26 @@ build/
 target/
 *.tsbuildinfo
 
-# Environment
+# Environment & Secrets
 .env
+.env.*
 .env.local
 .env.*.local
+!.env.example
+!**/.env.example
+*.pem
+*.key
+*.keystore
+*.jks
+*.p12
+*.pfx
+*.pkcs12
+*.crt
+*.cer
+id_rsa*
+id_ed25519*
+secrets/
+credentials.json
 
 # IDE
 .vscode/
