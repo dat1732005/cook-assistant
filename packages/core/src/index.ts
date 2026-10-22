@@ -19,6 +19,9 @@ export * from './units/index.js';
 // Xuất các hàm kiểm định dữ liệu an toàn
 export * from './validators/index.js';
 
+// Xuất bộ xếp lịch nấu ăn (Scheduler)
+export * from './scheduler/index.js';
+
 /**
  * Hàm chào mẫu kiểm tra liên kết hệ thống (giữ lại từ T01 để tương thích ngược).
  *

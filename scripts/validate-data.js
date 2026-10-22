@@ -1,5 +1,3 @@
-#!/usr/bin/env node
-
 /**
  * File: scripts/validate-data.js
  * Làm gì: Script kiểm tra tính toàn vẹn và hợp lệ của toàn bộ dữ liệu (T03.2),

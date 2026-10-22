@@ -16,8 +16,8 @@ Tài liệu này ghi lại toàn bộ tiến độ, lịch sử các phiên làm
 | **T02-FIX (phần 4)** | `919f443`<br>`8bd18b5` | 22/10/2026 | Cho phép ngoại lệ `!.env.example`; nạp tài liệu `docs/plan.md` chính thức; chuyển `RecipeSchema` sang chuẩn `snake_case` nguyên văn; xác thực thành công JSON mẫu món "Trứng chiên cà chua". | **ĐÃ XONG** |
 | **T02-FIX (phần 5)** | `3bfafb2` | 22/10/2026 | Chuyển nốt 5 thực thể (`ingredient`, `pantry_item`, `pantry_event`, `cook_session`, `user_profile`, `storage_rule`) sang đúng khóa của `plan.md`; đọc động JSON mẫu từ `plan.md`; tạo `docs/field-names.md`. | **ĐÃ XONG** |
 | **T02-FIX (phần 6)** | `e082fd5` | 22/10/2026 | Chuyển `ingredient.allergen_code` thành `allergen_codes` (mảng danh sách để tránh bỏ sót dị ứng); bổ sung mục enum tiếng Anh vào `docs/field-names.md`; 64 unit tests pass 100%. | **ĐÃ XONG** |
-| **T02-FIX (phần 7)** | `3186e28`<br>`4213d4a`<br>`65c0bb0` | 22/10/2026 | Tái cấu trúc `field-names.md` thành 2 bảng A & B, loại bỏ tên sai cũ; siết quy tắc R2/R3 và an toàn dị ứng; mở rộng test đối chiếu nguyên văn dòng plan.md; gộp vào `main`. | **ĐÃ XONG** |
-| **T03** | (nhánh `task/T03`) | 23/10/2026 | Khởi tạo khung tệp dữ liệu rỗng chuẩn (`ingredients.json`, `equipment.json`, `storage_rules.json`, `safety_rules.json`, `recipes/`); xây dựng script `scripts/validate-data.js` (kiểm tra 8 quy tắc toàn vẹn, cờ `--strict`, cờ `--report-missing`); bộ test fixtures độc lập đạt 105 tests pass 100%. | **ĐÃ XONG** |
+| **T03** | `556d0fe`<br>`3ee6904` | 23/10/2026 | Khởi tạo khung tệp dữ liệu rỗng chuẩn (`ingredients.json`, `equipment.json`, `storage_rules.json`, `safety_rules.json`, `recipes/`); xây dựng script `scripts/validate-data.js` (kiểm tra 8 quy tắc toàn vẹn, cờ `--strict`, cờ `--report-missing`); gộp vào `main`. | **ĐÃ XONG** |
+| **T04** | (nhánh `task/T04`) | 23/10/2026 | Xây dựng bộ xếp lịch nấu ăn (Scheduler): hàm `plan()`, `replan()`, `checkManualStart()`, `computeTails()`; bám sát tuyệt đối `docs/expected/T04.md` và `docs/plan.md`; 123 tests pass 100%. | **ĐÃ XONG** |
 
 ---
 
@@ -100,24 +100,30 @@ Kế hoạch mô tả bằng tiếng Việt, dự án đã chuẩn hóa sang enu
   - **Đề xuất thực thể `equipment`:** Kế hoạch chưa có schema cho `equipment`; đã đề xuất các trường `id`, `name`, `source`, `confirmed_by`, `missing_fields` tại mục 12 của `docs/field-names.md` dưới dạng "THÊM, kế hoạch không có" và chờ duyệt trước khi đưa vào mã nguồn.
   - Xây dựng công cụ kiểm định toàn diện `scripts/validate-data.js` (chạy bằng `pnpm validate-data`), hỗ trợ chế độ nghiêm ngặt `--strict` và chế độ báo cáo `--report-missing` (gom theo tệp, trường và nguồn cần tìm).
 
+### 2.13. Bộ xếp lịch nấu ăn T04 (Scheduler)
+- **Kế hoạch:** Mục "Thuật toán" phần 1 "Xếp lịch nấu" ([`docs/plan.md:L250-L271`](plan.md#L250-L271)).
+- **Tài liệu kỳ vọng tính tay:** [`docs/expected/T04.md`](expected/T04.md) do chủ dự án và Claude tính tay trước khi code.
+- **Thực tế triển khai:**
+  - Mô-đun `packages/core/src/scheduler/`:
+    + `tail.ts`: Xác thực cấu trúc đồ thị (bắt lỗi chu trình `CYCLE` và phụ thuộc lạ `UNKNOWN_DEPENDENCY`); tính `tail(s)` bằng quy hoạch động có nhớ.
+    + `plan.ts`: Mô phỏng theo trục thời gian thực tế, hỗ trợ 2 chế độ `fastest` (ưu tiên bước có tail lớn nhất) và `fewest_tools` (ưu tiên bước dùng chung dụng cụ với bước active vừa làm xong). Trả về chuẩn `snake_case`: `{ step_id, start_at, end_at, reason }`.
+    + `replan.ts`: Tính lại lịch trình cho các bước chưa chạy khi người dùng bấm Xong sớm hoặc muộn; giữ nguyên tuyệt đối `endsAt` của các bước passive đang chạy nền.
+    + `manual-check.ts`: Hàm `checkManualStart()` chặn (`blocked`) khi bước có `safety_rule` chưa xác nhận, cảnh báo (`warn`) khi bước phụ thuộc `after` chưa xong, và cho phép (`ok`) khi thỏa mãn.
+  - T04.8: Tạo [`docs/limitations.md`](limitations.md) ghi nhận giới hạn: thời lượng bước không đổi khi đổi số phần ăn trong phiên bản MVP.
+
 ---
 
-## 3. Trạng thái hiện tại của hệ thống (Tính đến hết T03)
+## 3. Trạng thái hiện tại của hệ thống (Tính đến hết T04)
 
-- **Test Suite (`packages/core`):** 105 ca kiểm thử tự động pass 100%.
-  - Bộ test đồng bộ 100% giữa `docs/field-names.md` và 10 Zod schemas (kèm test chứng minh fail đỏ khi làm lệch khóa hoặc sai dòng).
-  - Bộ test cho quy tắc R2 và R3 trên `RecipeSchema` (3 ca hợp lệ, 3 ca sai).
-  - Bộ test an toàn dị ứng trên `IngredientSchema` (3 ca hợp lệ, 3 ca sai, test logic cảnh báo khi null).
-  - Khối JSON món "Trứng chiên cà chua" đọc trực tiếp từ `docs/plan.md`.
-  - 15 ca sai bắt buộc của công thức và đầy đủ ca kiểm thử cho toàn bộ 10 thực thể.
-  - Toàn bộ ca kiểm thử cho script `validate-data` trên các dữ liệu mẫu synthetic trong `fixtures/`.
-- **Dữ liệu & Script kiểm định (T03):**
-  - `pnpm validate-data` trên thư mục `data/` rỗng: HỢP LỆ, sạch sẽ 100% (mã thoát 0).
-  - `pnpm validate-data --strict` trên `data/` rỗng: HỢP LỆ (mã thoát 0).
-  - `pnpm validate-data --report-missing`: In bảng danh sách việc cần biên tập chi tiết.
+- **Test Suite (`packages/core`):** 123 ca kiểm thử tự động pass 100% trên cả 4 file test.
+  - 18 ca kiểm thử Scheduler (T04) khớp 100% với các khối JSON tính tay trong `docs/expected/T04.md` (Ca A, B, C, D, E, F, G, H, T04.8).
+  - 15 ca kiểm định dữ liệu và cờ `--strict`, `--report-missing` (T03).
+  - 88 ca kiểm thử schema Zod, đồng bộ tài liệu `docs/field-names.md`, quy tắc R2/R3, an toàn dị ứng, quy đổi đơn vị (T02).
+  - 2 ca kiểm thử liên kết hệ thống (T01).
 - **Kiểm tra tĩnh & Mã nguồn:**
   - `build` thành công, sạch sẽ (`tsc --project tsconfig.build.json`).
   - `typecheck` không có lỗi trên toàn bộ workspace.
-  - `eslint` không có cảnh báo/lỗi.
-  - `scan-secrets.py` quét toàn bộ lịch sử 13 commits: sạch 100%, không lọt khóa/token/file nhạy cảm.
-- **Tiến độ tổng thể:** Đã đóng hoàn tất T01, T02, T02-FIX và T03. **Tuyệt đối chưa làm T04.**
+  - `eslint` sạch sẽ 100%, 0 lỗi, 0 cảnh báo.
+  - `pnpm validate-data` và `pnpm validate-data --strict` sạch sẽ trên thư mục `data/` rỗng.
+  - `scan-secrets.py` quét toàn bộ lịch sử 15 commits: sạch 100%.
+- **Tiến độ tổng thể:** Đã đóng hoàn tất T01, T02, T03 và T04. **Tuyệt đối chưa làm T05.**
