@@ -1,0 +1,28 @@
+{
+  "slug": "mon-thit-bo",
+  "name": "Món thịt bò",
+  "servings_base": 2,
+  "difficulty": 1,
+  "equipment": ["chao"],
+  "ingredients": [
+    {
+      "ingredient": "thit-bo",
+      "qty": 200,
+      "unit": "g",
+      "role": "structure"
+    }
+  ],
+  "steps": [
+    {
+      "id": "s1",
+      "title": "Xào thịt",
+      "kind": "active",
+      "seconds": 120,
+      "after": [],
+      "resources": ["chao"],
+      "text": "Xào chín thịt"
+    }
+  ],
+  "status": "draft",
+  "synthetic": true
+}

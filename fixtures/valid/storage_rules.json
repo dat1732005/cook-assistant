@@ -1,0 +1,15 @@
+[
+  {
+    "id": "sr-trung",
+    "target_id_or_group": "trung-ga",
+    "state": "fresh",
+    "location": "fridge",
+    "max_days": 21,
+    "source_name": "USDA",
+    "source_url": "https://usda.gov/storage",
+    "source": "USDA Guideline",
+    "confirmed_by": "Chuyên gia bảo quản A",
+    "missing_fields": [],
+    "synthetic": true
+  }
+]

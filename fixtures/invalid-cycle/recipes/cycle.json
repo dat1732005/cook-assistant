@@ -1,0 +1,37 @@
+{
+  "slug": "mon-cycle",
+  "name": "Món lặp chu trình",
+  "servings_base": 2,
+  "difficulty": 1,
+  "equipment": ["chao"],
+  "ingredients": [
+    {
+      "ingredient": "trung-ga",
+      "qty": 2,
+      "unit": "cái",
+      "role": "structure"
+    }
+  ],
+  "steps": [
+    {
+      "id": "s1",
+      "title": "Bước 1",
+      "kind": "active",
+      "seconds": 60,
+      "after": ["s2"],
+      "resources": ["chao"],
+      "text": "Làm bước 1"
+    },
+    {
+      "id": "s2",
+      "title": "Bước 2",
+      "kind": "active",
+      "seconds": 60,
+      "after": ["s1"],
+      "resources": ["chao"],
+      "text": "Làm bước 2"
+    }
+  ],
+  "status": "draft",
+  "synthetic": true
+}

@@ -1,0 +1,36 @@
+[
+  {
+    "id": "trung-ga",
+    "name": "Trứng gà",
+    "aliases": ["trung"],
+    "group": "trung",
+    "base_unit": "cái",
+    "conversions": {
+      "quả": 1,
+      "g": 0.02
+    },
+    "allergen_codes": ["egg"],
+    "reference_price": 3000,
+    "source": "Bộ Nông nghiệp",
+    "confirmed_by": "Chuyên gia dinh dưỡng A",
+    "missing_fields": [],
+    "synthetic": true
+  },
+  {
+    "id": "ca-chua",
+    "name": "Cà chua",
+    "aliases": [],
+    "group": "rau-cu",
+    "base_unit": "cái",
+    "conversions": {
+      "quả": 1,
+      "g": 0.01
+    },
+    "allergen_codes": [],
+    "reference_price": 5000,
+    "source": "Bộ Y tế",
+    "confirmed_by": "Chuyên gia dinh dưỡng B",
+    "missing_fields": [],
+    "synthetic": true
+  }
+]

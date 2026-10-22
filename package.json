@@ -2,12 +2,14 @@
   "name": "cook-assistant",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "description": "Trợ lý nấu ăn - Cooking Assistant MVP",
   "engines": {
     "node": ">=22.0.0",
     "pnpm": ">=12.0.0"
   },
   "scripts": {
+    "build": "pnpm --filter @cook/core build",
     "test": "pnpm -r run test",
     "typecheck": "pnpm -r run typecheck",
     "lint": "pnpm -r run lint",

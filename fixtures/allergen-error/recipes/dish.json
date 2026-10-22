@@ -1,0 +1,33 @@
+{
+  "slug": "mon-allergen-loi",
+  "name": "Món vi phạm an toàn dị ứng",
+  "servings_base": 2,
+  "difficulty": 1,
+  "equipment": ["chao"],
+  "ingredients": [
+    {
+      "ingredient": "trung-ga",
+      "qty": 2,
+      "unit": "cái",
+      "role": "structure"
+    }
+  ],
+  "steps": [
+    {
+      "id": "s1",
+      "title": "Nấu",
+      "kind": "active",
+      "seconds": 60,
+      "after": [],
+      "resources": ["chao"],
+      "text": "Nấu chín"
+    }
+  ],
+  "status": "published",
+  "source": "Sách ẩm thực",
+  "confirmed_by": "Chuyên gia A",
+  "reviewer": "Kiểm duyệt viên",
+  "reviewed_at": "2026-10-22T08:00:00Z",
+  "missing_fields": [],
+  "synthetic": true
+}

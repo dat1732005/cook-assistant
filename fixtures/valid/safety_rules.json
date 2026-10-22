@@ -1,0 +1,13 @@
+[
+  {
+    "id": "safe-temp-egg",
+    "title": "Nấu chín trứng",
+    "category": "temperature",
+    "description": "Lòng đỏ trứng cần được nấu chín để tránh nhiễm khuẩn Salmonella.",
+    "requires_confirmation": false,
+    "source": "FDA Safety Guidelines",
+    "confirmed_by": "Chuyên gia an toàn thực phẩm A",
+    "missing_fields": [],
+    "synthetic": true
+  }
+]

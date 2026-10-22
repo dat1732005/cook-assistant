@@ -1,0 +1,12 @@
+[
+  {
+    "id": "thit-ga",
+    "name": "Thịt gà",
+    "group": "thit",
+    "base_unit": "g",
+    "conversions": {},
+    "allergen_codes": null,
+    "missing_fields": ["allergen_codes", "reference_price"],
+    "synthetic": true
+  }
+]

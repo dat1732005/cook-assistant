@@ -1,0 +1,13 @@
+[
+  {
+    "id": "sr-chicken",
+    "target_id_or_group": "thit-ga",
+    "state": "fresh",
+    "location": "fridge",
+    "max_days": 2,
+    "source_name": "CDC",
+    "source_url": "https://cdc.gov",
+    "missing_fields": ["source"],
+    "synthetic": true
+  }
+]

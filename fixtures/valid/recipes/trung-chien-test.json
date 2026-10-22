@@ -1,0 +1,50 @@
+{
+  "slug": "trung-chien-test",
+  "name": "Trứng chiên thử nghiệm",
+  "servings_base": 2,
+  "difficulty": 1,
+  "equipment": ["chao", "to"],
+  "ingredients": [
+    {
+      "ingredient": "trung-ga",
+      "qty": 2,
+      "unit": "quả",
+      "role": "structure"
+    },
+    {
+      "ingredient": "ca-chua",
+      "qty": 1,
+      "unit": "quả",
+      "role": "flavor",
+      "flavor_group": "acid"
+    }
+  ],
+  "steps": [
+    {
+      "id": "s1",
+      "title": "Đánh trứng",
+      "kind": "active",
+      "seconds": 60,
+      "after": [],
+      "resources": ["to"],
+      "text": "Đập trứng vào tô và đánh tan.",
+      "safety_rule": "safe-temp-egg"
+    },
+    {
+      "id": "s2",
+      "title": "Chiên trứng",
+      "kind": "active",
+      "seconds": 120,
+      "after": ["s1"],
+      "resources": ["chao"],
+      "text": "Đổ trứng vào chảo chiên vàng đều hai mặt."
+    }
+  ],
+  "status": "published",
+  "source": "Sách dạy nấu ăn gia đình",
+  "confirmed_by": "Bếp trưởng A",
+  "reviewer": "Kiểm duyệt viên B",
+  "reviewed_at": "2026-10-22T08:00:00Z",
+  "missing_fields": [],
+  "synthetic": true
+}

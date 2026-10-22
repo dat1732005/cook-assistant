@@ -188,7 +188,7 @@ function parseFieldNamesDetailedTables(): {
       const lines = parts[1].split('\n');
       for (const line of lines) {
         const row = line.match(/^\|\s*`([a-z0-9_]+)`\s*\|\s*([^|]+)\|\s*([^|]+)\|/);
-        if (row && row[1]) {
+        if (row && row[1] && row[3]) {
           const key = row[1];
           const lineNums = (row[3].match(/\d+/g) || []).map(Number);
           tableARows.push({ entity, key, lineNumbers: lineNums });
@@ -200,7 +200,7 @@ function parseFieldNamesDetailedTables(): {
       const lines = parts[2].split('\n');
       for (const line of lines) {
         const row = line.match(/^\|\s*`([a-z0-9_]+)`\s*\|\s*([^|]+)\|\s*([^|]+)\|/);
-        if (row && row[1]) {
+        if (row && row[1] && row[2] && row[3]) {
           const key = row[1];
           const desc = row[2].trim();
           const lineStr = row[3].trim();
@@ -325,7 +325,8 @@ describe('T02: Kiểm tra đồng bộ 100% giữa docs/field-names.md và Zod S
       key: 'servings_base',
       lineNumbers: [1], // Dòng 1 không có "servings_base"
     };
-    const lineContentA = planLines[badTableARow.lineNumbers[0] - 1] || '';
+    const targetLineA = badTableARow.lineNumbers[0] ?? 1;
+    const lineContentA = planLines[targetLineA - 1] || '';
     expect(lineContentA.includes(badTableARow.key)).toBe(false);
 
     // Giả lập 2: Bảng B dẫn sai dòng (ví dụ "tổng phút" dẫn dòng 1 thay vì 176)
@@ -336,7 +337,8 @@ describe('T02: Kiểm tra đồng bộ 100% giữa docs/field-names.md và Zod S
       lineNumbers: [1], // Dòng 1 không có "tổng phút"
       isProjectAdded: false,
     };
-    const lineContentB = planLines[badTableBRow.lineNumbers[0] - 1] || '';
+    const targetLineB = badTableBRow.lineNumbers[0] ?? 1;
+    const lineContentB = planLines[targetLineB - 1] || '';
     expect(lineContentB.includes(badTableBRow.vietnameseDesc)).toBe(false);
   });
 });
