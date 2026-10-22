@@ -1,10 +1,10 @@
 /**
  * File: packages/core/src/__tests__/schema.test.ts
- * Mục đích: Bộ kiểm thử đơn vị cho toàn bộ Zod schemas, validator và hàm quy đổi đơn vị.
- * Nhận vào: Dữ liệu mẫu (fixtures/recipes.ts) gồm 5 ca hợp lệ và 10 ca cố tình tạo sai.
+ * Làm gì: Bộ kiểm thử đơn vị cho toàn bộ Zod schemas (snake_case chuẩn theo docs/plan.md), validator và hàm quy đổi đơn vị.
+ * Nhận vào: Dữ liệu mẫu (fixtures/recipes.ts) gồm 5 ca hợp lệ (có JSON gốc của kế hoạch) và 15 ca cố tình tạo sai.
  * Trả ra: Kết quả kiểm thử thành công (pass) hoặc thất bại (fail) của Vitest.
  * Ai gọi: Lệnh `pnpm test` tại packages/core hoặc thư mục gốc monorepo.
- * Bám theo: Mục T02 Nghiệm thu và Bảng bằng chứng trong docs/tasks.md.
+ * Bám theo: Mục T02 Nghiệm thu và Bảng bằng chứng trong docs/tasks.md, docs/plan.md dòng 259-300.
  */
 
 import { describe, expect, it } from 'vitest';
@@ -23,7 +23,7 @@ import {
   isBaseUnit,
 } from '../units/conversions.js';
 import {
-  VALID_RECIPE_TRUNG_CHIEN_CA_CHUA,
+  VALID_RECIPE_PLAN_ORIGINAL,
   VALID_RECIPE_RAU_MUONG_LUOC,
   VALID_RECIPE_REVIEWED,
   VALID_RECIPE_PUBLISHED,
@@ -32,14 +32,19 @@ import {
 } from '../fixtures/recipes.js';
 
 describe('T02: Kiểm tra tính hợp lệ của các công thức mẫu (5 ca hợp lệ)', () => {
-  it('Ca 1: Validator chấp nhận món mẫu chuẩn "Trứng chiên cà chua"', () => {
-    const result = validateRecipe(VALID_RECIPE_TRUNG_CHIEN_CA_CHUA);
+  it('Ca 1: Validator chấp nhận JSON gốc "Trứng chiên cà chua" nguyên văn từ docs/plan.md', () => {
+    const result = validateRecipe(VALID_RECIPE_PLAN_ORIGINAL);
     expect(result.success).toBe(true);
     if (result.success) {
-      expect(result.data.title).toBe('Trứng chiên cà chua');
-      expect(result.data.servings).toBe(2);
-      expect(result.data.ingredients).toHaveLength(5);
+      expect(result.data.slug).toBe('trung-chien-ca-chua');
+      expect(result.data.name).toBe('Trứng chiên cà chua');
+      expect(result.data.servings_base).toBe(2);
+      expect(result.data.difficulty).toBe(1);
+      expect(result.data.equipment).toEqual(['chao', 'to', 'dao-thot']);
+      expect(result.data.ingredients).toHaveLength(6);
       expect(result.data.steps).toHaveLength(5);
+      expect(result.data.status).toBe('draft');
+      expect(result.data.version).toBe(1);
     }
   });
 
@@ -48,7 +53,9 @@ describe('T02: Kiểm tra tính hợp lệ của các công thức mẫu (5 ca h
     expect(result.success).toBe(true);
     if (result.success) {
       expect(result.data.slug).toBe('rau-muong-luoc');
-      expect(result.data.steps.some((s) => s.type === 'passive')).toBe(true);
+      expect(result.data.steps.some((s) => s.kind === 'passive')).toBe(true);
+      expect(result.data.total_minutes).toBe(15);
+      expect(result.data.tags).toContain('luoc');
     }
   });
 
@@ -57,7 +64,8 @@ describe('T02: Kiểm tra tính hợp lệ của các công thức mẫu (5 ca h
     expect(result.success).toBe(true);
     if (result.success) {
       expect(result.data.status).toBe('reviewed');
-      expect(result.data.reviewedBy).toBe('Chuyên gia ẩm thực Nguyễn Văn A');
+      expect(result.data.reviewer).toBe('Chuyên gia ẩm thực Nguyễn Văn A');
+      expect(result.data.reviewed_at).toBe('2026-10-20T08:00:00Z');
     }
   });
 
@@ -67,24 +75,25 @@ describe('T02: Kiểm tra tính hợp lệ của các công thức mẫu (5 ca h
     if (result.success) {
       expect(result.data.status).toBe('published');
       expect(result.data.version).toBe(2);
+      expect(result.data.reviewer).toBe('Hội đồng thẩm định ẩm thực');
+      expect(result.data.reviewed_at).toBe('2026-10-20T09:00:00Z');
     }
   });
 
-  it('Ca 5: Validator chấp nhận món ăn nhanh "Sinh tố bơ"', () => {
+  it('Ca 5: Validator chấp nhận món ăn nhanh "Sinh tố bơ" có ghi chú lượng amount_note', () => {
     const result = validateRecipe(VALID_RECIPE_SINH_TO);
     expect(result.success).toBe(true);
     if (result.success) {
-      expect(result.data.servings).toBe(1);
+      expect(result.data.servings_base).toBe(1);
+      expect(result.data.ingredients[1]?.amount_note).toBe('khoảng 2 thìa vừa ngọt');
     }
   });
 });
 
-describe('T02: Bắt lỗi các ca sai bắt buộc (Ít nhất 8 ca sai theo tiêu chí nghiệm thu)', () => {
-  // Duyệt qua từng ca kiểm thử tiêu cực trong danh sách INVALID_RECIPE_CASES
+describe('T02: Bắt lỗi các ca sai bắt buộc (15 ca sai theo tiêu chí nghiệm thu và quy tắc kế hoạch)', () => {
   INVALID_RECIPE_CASES.forEach((testCase, index) => {
     it(`Ca sai ${index + 1}: ${testCase.name}`, () => {
       const result = validateRecipe(testCase.data);
-      // Kết quả bắt buộc phải thất bại (không được nhận dữ liệu sai)
       expect(result.success).toBe(false);
       if (!result.success) {
         expect(result.errors.length).toBeGreaterThan(0);
@@ -93,7 +102,7 @@ describe('T02: Bắt lỗi các ca sai bắt buộc (Ít nhất 8 ca sai theo ti
         );
         expect(
           hasMatchingError,
-          `Mong đợi lỗi chứa từ khóa "${testCase.expectedErrorSubstring}", nhưng danh sách lỗi là: ${result.errors.join('; ')}`,
+          `Mong đợi lỗi chứa từ khóa "${testCase.expectedErrorSubstring}", nhưng danh sách lỗi thực tế là: ${result.errors.join('; ')}`,
         ).toBe(true);
       }
     });
@@ -114,33 +123,27 @@ describe('T02: Kiểm tra quy đổi đơn vị (conversions)', () => {
   });
 
   it('Đổi theo bảng conversions riêng của nguyên liệu (quả -> g)', () => {
-    // 55g/quả là dữ liệu giả (synthetic mock data) dùng riêng cho test case, không phải dữ liệu thật theo quy tắc R3
-    const conversions = { quả: 55 /* dữ liệu giả (synthetic mock data) */ };
+    const conversions = { quả: 55 };
     const result = convertToBaseUnit(3, 'quả', 'g', conversions);
     expect(result).toBe(165); // 3 * 55 = 165 gam
   });
 
   it('Đổi theo thể tích chuẩn mặc định cho chất lỏng (thìa cà phê -> ml, thìa canh -> ml)', () => {
-    // 3 thìa cà phê nước mắm = 15 ml (quy ước tạm, chờ xác nhận)
     expect(convertToBaseUnit(3, 'thìa cà phê', 'ml')).toBe(15);
-    // 2 thìa canh dầu ăn = 30 ml (quy ước tạm, chờ xác nhận)
     expect(convertToBaseUnit(2, 'thìa canh', 'ml')).toBe(30);
   });
 
   it('Dùng chén khi chưa có quy đổi trong bảng conversions riêng phải ném lỗi rõ ràng (MISSING)', () => {
-    // Không có conversions riêng cho chén đối với nguyên liệu lỏng (baseUnit: ml) -> phải ném lỗi rõ ràng
     expect(() => convertToBaseUnit(1, 'chén', 'ml', null)).toThrow(
       /Không thể quy đổi đơn vị "chén" sang đơn vị gốc "ml" do đơn vị "chén" đang ở trạng thái MISSING/,
     );
-    // Không có conversions riêng cho chén đối với nguyên liệu rắn (baseUnit: g) -> phải ném lỗi rõ ràng
     expect(() => convertToBaseUnit(2, 'chén', 'g', {})).toThrow(
       /Không thể quy đổi đơn vị "chén" sang đơn vị gốc "g" do đơn vị "chén" đang ở trạng thái MISSING/,
     );
   });
 
   it('Quy đổi giữa hai đơn vị không phải gốc (g -> quả qua bảng conversions)', () => {
-    const conversions = { quả: 50 /* dữ liệu giả (synthetic mock data) */ };
-    // 150 gam trứng = 3 quả
+    const conversions = { quả: 50 };
     expect(convertUnit(150, 'g', 'quả', 'g', conversions)).toBe(3);
   });
 
@@ -151,7 +154,6 @@ describe('T02: Kiểm tra quy đổi đơn vị (conversions)', () => {
   });
 
   it('Thìa kèm nguyên liệu dạng rắn (baseUnit: g) mà không có quy đổi riêng phải ném lỗi, không đoán ra số gam', () => {
-    // 2 thìa bột mì/đường (baseUnit: g) không có conversions riêng: bắt buộc ném lỗi, không tự ý đoán ra số gam
     expect(() => convertToBaseUnit(2, 'thìa cà phê', 'g', null)).toThrow(
       /Không thể quy đổi đơn vị "thìa cà phê" sang đơn vị gốc "g"/,
     );
@@ -168,13 +170,12 @@ describe('T02: Kiểm tra các schema thực thể khác (Ingredient, Pantry, Se
       name: 'Trứng gà',
       aliases: ['hột gà'],
       baseUnit: 'quả', // sai enum: chỉ nhận 'g', 'ml', 'cái'
-      conversions: { quả: 55 /* dữ liệu giả (synthetic mock data) */ },
+      conversions: { quả: 55 },
       allergens: ['egg'],
     };
     const invalidResult = validateIngredient(validIngredient);
     expect(invalidResult.success).toBe(false);
 
-    // Sửa lại baseUnit đúng ('cái')
     const validResult = validateIngredient({
       ...validIngredient,
       baseUnit: 'cái',
@@ -204,7 +205,6 @@ describe('T02: Kiểm tra các schema thực thể khác (Ingredient, Pantry, Se
     };
     expect(validatePantryEvent(validEvent).success).toBe(true);
 
-    // Sai reason
     expect(
       validatePantryEvent({ ...validEvent, reason: 'borrow' }).success,
     ).toBe(false);
@@ -213,7 +213,7 @@ describe('T02: Kiểm tra các schema thực thể khác (Ingredient, Pantry, Se
   it('CookSessionSchema kiểm tra kế hoạch hợp lệ', () => {
     const validSession = {
       id: 'session_1',
-      recipeId: 'recipe_trung_chien_ca_chua',
+      recipeId: 'trung-chien-ca-chua',
       recipeVersion: 1,
       servings: 2,
       mode: 'fastest',
@@ -238,7 +238,6 @@ describe('T02: Kiểm tra các schema thực thể khác (Ingredient, Pantry, Se
     };
     expect(validateUserProfile(validProfile).success).toBe(true);
 
-    // Dị ứng sai mã
     expect(
       validateUserProfile({ ...validProfile, allergies: ['pollen'] }).success,
     ).toBe(false);

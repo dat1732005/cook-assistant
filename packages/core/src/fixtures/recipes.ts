@@ -1,10 +1,10 @@
 /**
  * File: packages/core/src/fixtures/recipes.ts
- * Mục đích: Cung cấp dữ liệu mẫu công thức giả lập (synthetic) phục vụ kiểm thử đơn vị.
+ * Làm gì: Cung cấp dữ liệu mẫu công thức giả lập (synthetic) phục vụ kiểm thử đơn vị, bao gồm 5 ca hợp lệ (có JSON gốc kế hoạch) và 15 ca sai bắt buộc.
  * Nhận vào: Không có.
- * Trả ra: Các đối tượng mẫu công thức hợp lệ và các ca cố tình tạo sai.
- * Ai gọi: Các file kiểm thử trong packages/core/src/__tests__/.
- * Bám theo: Mục T02, R3 (Tách dữ liệu thật khỏi dữ liệu giả), và R4 trong docs/tasks.md.
+ * Trả ra: Các đối tượng mẫu Recipe hợp lệ và danh sách ca vi phạm schema.
+ * Ai gọi: packages/core/src/__tests__/schema.test.ts.
+ * Bám theo: Mục T02 Nghiệm thu và Bảng bằng chứng trong docs/tasks.md, docs/plan.md dòng 259-300.
  */
 
 /**
@@ -17,248 +17,184 @@ export const SYNTHETIC_FIXTURE_METADATA = {
 } as const;
 
 /**
- * Ca hợp lệ 1: Món "Trứng chiên cà chua" chuẩn (Mục T02 Nghiệm thu).
+ * Ca hợp lệ 1: Món "Trứng chiên cà chua" - LẤY NGUYÊN VĂN TỪ docs/plan.md (dòng 259-281).
  */
-export const VALID_RECIPE_TRUNG_CHIEN_CA_CHUA = {
-  synthetic: true,
-  id: 'recipe_trung_chien_ca_chua',
+export const VALID_RECIPE_PLAN_ORIGINAL = {
   slug: 'trung-chien-ca-chua',
-  title: 'Trứng chiên cà chua',
-  description: 'Món ăn gia đình nhanh gọn, giàu dinh dưỡng và dễ làm',
-  servings: 2,
-  prepTime: 300,
-  cookTime: 420,
-  status: 'draft' as const,
-  equipment: ['chao', 'bep', 'to', 'dua', 'dao_thot'],
+  name: 'Trứng chiên cà chua',
+  servings_base: 2,
+  difficulty: 1,
+  equipment: ['chao', 'to', 'dao-thot'],
   ingredients: [
-    {
-      ingredientId: 'trung_ga',
-      amount: 3,
-      unit: 'quả',
-      role: 'structure' as const,
-      tasteGroup: 'fat' as const,
-      isOptional: false,
-      substitutes: ['trung_vit'],
-    },
-    {
-      ingredientId: 'ca_chua',
-      amount: 2,
-      unit: 'quả',
-      role: 'moisture' as const,
-      tasteGroup: 'acid' as const,
-      isOptional: false,
-      substitutes: [],
-    },
-    {
-      ingredientId: 'hanh_la',
-      amount: 2,
-      unit: 'nhánh',
-      role: 'color' as const,
-      tasteGroup: 'none' as const,
-      isOptional: true,
-      substitutes: [],
-    },
-    {
-      ingredientId: 'nuoc_mam',
-      amount: 5,
-      unit: 'ml',
-      role: 'flavor' as const,
-      tasteGroup: 'salt' as const,
-      isOptional: false,
-      substitutes: ['muoi'],
-    },
-    {
-      ingredientId: 'dau_an',
-      amount: 15,
-      unit: 'ml',
-      role: 'flavor' as const,
-      tasteGroup: 'fat' as const,
-      isOptional: false,
-      substitutes: [],
-    },
+    { ingredient: 'trung-ga', qty: 3, unit: 'quả', role: 'structure' as const },
+    { ingredient: 'ca-chua', qty: 2, unit: 'quả', role: 'flavor' as const, flavor_group: 'acid' as const },
+    { ingredient: 'hanh-la', qty: 1, unit: 'nhánh', role: 'flavor' as const, optional: true },
+    { ingredient: 'nuoc-mam', qty: 1, unit: 'thìa cà phê', role: 'flavor' as const, flavor_group: 'salt' as const },
+    { ingredient: 'duong', qty: 0.5, unit: 'thìa cà phê', role: 'flavor' as const, flavor_group: 'sugar' as const },
+    { ingredient: 'dau-an', qty: 2, unit: 'thìa canh', role: 'moisture' as const },
   ],
   steps: [
     {
-      id: 'step_1',
-      order: 1,
-      title: 'Sơ chế cà chua và hành lá',
-      instruction: 'Cà chua rửa sạch bổ múi cau, hành lá rửa sạch thái nhỏ',
-      type: 'active' as const,
-      duration: 180,
+      id: 's1',
+      title: 'Cắt cà chua',
+      kind: 'active' as const,
+      seconds: 120,
       after: [],
-      resources: ['dao_thot'],
-      cue: 'Cà chua thái đều miếng, hành lá thái mịn',
+      resources: ['dao-thot'],
+      text: 'Rửa và cắt cà chua thành múi cau.',
     },
     {
-      id: 'step_2',
-      order: 2,
-      title: 'Đánh tan trứng',
-      instruction: 'Đập 3 quả trứng vào tô, thêm 5 ml nước mắm, dùng đũa đánh tan đều',
-      type: 'active' as const,
-      duration: 120,
+      id: 's2',
+      title: 'Đánh trứng',
+      kind: 'active' as const,
+      seconds: 90,
       after: [],
-      resources: ['to', 'dua'],
-      cue: 'Lòng đỏ và lòng trắng quyện đều, sủi bọt khí nhỏ',
+      resources: ['to'],
+      text: 'Đập trứng vào tô, thêm nước mắm, đánh đều.',
     },
     {
-      id: 'step_3',
-      order: 3,
-      title: 'Xào sốt cà chua',
-      instruction: 'Bắc chảo lên bếp, cho 15 ml dầu ăn, trút cà chua vào xào lửa vừa',
-      type: 'active' as const,
-      duration: 180,
-      after: ['step_1'],
-      resources: ['chao', 'bep'],
-      cue: 'Cà chua chín mềm nhuyễn, tạo thành nước sốt sền sệt màu đỏ cam',
+      id: 's3',
+      title: 'Chiên trứng',
+      kind: 'active' as const,
+      seconds: 180,
+      after: ['s2'],
+      resources: ['chao'],
+      cue: 'Mặt dưới vàng nhẹ thì lật',
+      text: 'Cho dầu vào chảo, đổ trứng, chiên chín rồi múc ra đĩa.',
     },
     {
-      id: 'step_4',
-      order: 4,
-      title: 'Đổ trứng vào rán',
-      instruction: 'Đổ từ từ bát trứng vào chảo cà chua, để lửa vừa cho trứng đông',
-      type: 'passive' as const,
-      duration: 150,
-      after: ['step_2', 'step_3'],
-      resources: ['chao', 'bep'],
-      cue: 'Viền trứng se lại và phồng nhẹ, mặt trên còn hơi ướt',
+      id: 's4',
+      title: 'Xào cà chua',
+      kind: 'active' as const,
+      seconds: 240,
+      after: ['s1', 's3'],
+      resources: ['chao'],
+      cue: 'Cà chua mềm và ra nước',
+      text: 'Xào cà chua với đường đến khi mềm.',
     },
     {
-      id: 'step_5',
-      order: 5,
-      title: 'Đảo miếng và hoàn tất',
-      instruction: 'Dùng đũa đẩy nhẹ các mảng trứng, rắc hành lá thái nhỏ rồi tắt bếp',
-      type: 'active' as const,
-      duration: 90,
-      after: ['step_4'],
-      resources: ['chao', 'bep'],
-      cue: 'Trứng chín mềm xốp, hành lá dậy mùi thơm',
+      id: 's5',
+      title: 'Trộn và nêm',
+      kind: 'active' as const,
+      seconds: 60,
+      after: ['s4'],
+      resources: ['chao'],
+      text: 'Cho trứng vào, đảo nhẹ, nêm nếm rồi rắc hành.',
     },
   ],
-  version: 1,
-  source: 'Công thức gia đình truyền thống',
-  confirmedBy: 'Người biết nấu',
 };
 
 /**
- * Ca hợp lệ 2: Món "Rau muống luộc" (đơn giản, có bước passive tự đun).
+ * Ca hợp lệ 2: Món "Rau muống luộc" (có bước passive tự đun, đầy đủ thông tin metadata).
  */
 export const VALID_RECIPE_RAU_MUONG_LUOC = {
-  synthetic: true,
-  id: 'recipe_rau_muong_luoc',
   slug: 'rau-muong-luoc',
-  title: 'Rau muống luộc',
-  description: 'Món rau luộc thanh mát, giữ được màu xanh giòn ngọt',
-  servings: 4,
-  prepTime: 240,
-  cookTime: 360,
-  status: 'draft' as const,
+  name: 'Rau muống luộc',
+  servings_base: 4,
+  difficulty: 1,
+  total_minutes: 15,
+  tags: ['luoc', 'mon-rau', 'thanh-dam'],
   equipment: ['noi', 'bep', 'dua', 'ro'],
   ingredients: [
     {
-      ingredientId: 'rau_muong',
-      amount: 500,
+      ingredient: 'rau-muong',
+      qty: 500,
       unit: 'g',
       role: 'structure' as const,
-      tasteGroup: 'none' as const,
-      isOptional: false,
-      substitutes: [],
+      flavor_group: 'none' as const,
+      optional: false,
     },
     {
-      ingredientId: 'muoi',
-      amount: 5,
+      ingredient: 'muoi',
+      qty: 5,
       unit: 'g',
       role: 'flavor' as const,
-      tasteGroup: 'salt' as const,
-      isOptional: false,
-      substitutes: [],
+      flavor_group: 'salt' as const,
+      optional: false,
     },
   ],
   steps: [
     {
       id: 'step_1',
-      order: 1,
       title: 'Nhặt và rửa rau',
-      instruction: 'Nhặt bỏ lá già, ngắt đoạn vừa ăn, rửa sạch để ráo nước',
-      type: 'active' as const,
-      duration: 240,
+      kind: 'active' as const,
+      seconds: 240,
       after: [],
       resources: ['ro'],
+      text: 'Nhặt bỏ lá già, ngắt đoạn vừa ăn, rửa sạch để ráo nước',
     },
     {
       id: 'step_2',
-      order: 2,
       title: 'Đun sôi nước luộc',
-      instruction: 'Cho 1 lít nước vào nồi cùng 5 g muối, bật bếp đun sôi bùng',
-      type: 'passive' as const,
-      duration: 300,
+      kind: 'passive' as const,
+      seconds: 300,
       after: [],
       resources: ['noi', 'bep'],
       cue: 'Nước trong nồi sôi sủi tăm mạnh',
+      text: 'Cho 1 lít nước vào nồi cùng 5 g muối, bật bếp đun sôi bùng',
     },
     {
       id: 'step_3',
-      order: 3,
       title: 'Thả rau và luộc chín tới',
-      instruction: 'Thả rau muống vào nồi nước sôi, dùng đũa dìm ngập nước, đun 2 phút',
-      type: 'active' as const,
-      duration: 120,
+      kind: 'active' as const,
+      seconds: 120,
       after: ['step_1', 'step_2'],
       resources: ['noi', 'bep', 'dua'],
       cue: 'Cọng rau chín giòn, màu xanh mướt',
+      text: 'Thả rau muống vào nồi nước sôi, dùng đũa dìm ngập nước, đun 2 phút',
     },
   ],
   version: 1,
 };
 
 /**
- * Ca hợp lệ 3: Món đã được kiểm duyệt (reviewed).
+ * Ca hợp lệ 3: Món đã được kiểm duyệt (reviewed) có reviewer và reviewed_at.
  */
 export const VALID_RECIPE_REVIEWED = {
-  synthetic: true,
-  id: 'recipe_canh_trung_ca_chua',
   slug: 'canh-trung-ca-chua',
-  title: 'Canh mây cà chua',
-  servings: 3,
-  prepTime: 180,
-  cookTime: 300,
+  name: 'Canh mây cà chua',
+  servings_base: 3,
+  difficulty: 1,
+  total_minutes: 12,
   status: 'reviewed' as const,
-  reviewedBy: 'Chuyên gia ẩm thực Nguyễn Văn A',
-  reviewedAt: '2026-10-20T08:00:00Z',
-  equipment: ['noi', 'bep'],
+  reviewer: 'Chuyên gia ẩm thực Nguyễn Văn A',
+  reviewed_at: '2026-10-20T08:00:00Z',
+  tags: ['canh', 'thanh-nhiet'],
+  equipment: ['noi', 'bep', 'dua'],
   ingredients: [
     {
-      ingredientId: 'trung_ga',
-      amount: 2,
-      unit: 'cái',
+      ingredient: 'trung-ga',
+      qty: 2,
+      unit: 'quả',
       role: 'structure' as const,
-      tasteGroup: 'fat' as const,
+      flavor_group: 'fat' as const,
     },
     {
-      ingredientId: 'ca_chua',
-      amount: 2,
-      unit: 'cái',
+      ingredient: 'ca-chua',
+      qty: 2,
+      unit: 'quả',
       role: 'moisture' as const,
-      tasteGroup: 'acid' as const,
+      flavor_group: 'acid' as const,
     },
   ],
   steps: [
     {
       id: 'step_1',
-      order: 1,
-      instruction: 'Đun sôi nước với cà chua',
-      type: 'active' as const,
-      duration: 180,
+      title: 'Đun sôi nước cà chua',
+      kind: 'active' as const,
+      seconds: 180,
       after: [],
       resources: ['noi', 'bep'],
+      text: 'Đun sôi nước với cà chua',
     },
     {
       id: 'step_2',
-      order: 2,
-      instruction: 'Rót trứng tạo vân mây',
-      type: 'active' as const,
-      duration: 120,
+      title: 'Rót trứng tạo vân mây',
+      kind: 'active' as const,
+      seconds: 120,
       after: ['step_1'],
-      resources: ['noi', 'bep'],
+      resources: ['noi', 'bep', 'dua'],
+      text: 'Rót trứng tạo vân mây và tắt bếp',
     },
   ],
   version: 1,
@@ -268,141 +204,138 @@ export const VALID_RECIPE_REVIEWED = {
  * Ca hợp lệ 4: Món đã phát hành chính thức (published).
  */
 export const VALID_RECIPE_PUBLISHED = {
-  synthetic: true,
-  id: 'recipe_thit_kho_tau',
   slug: 'thit-kho-tau',
-  title: 'Thịt kho trứng',
-  servings: 4,
-  prepTime: 600,
-  cookTime: 1800,
+  name: 'Thịt kho trứng',
+  servings_base: 4,
+  difficulty: 2,
+  total_minutes: 50,
   status: 'published' as const,
-  reviewedBy: 'Hội đồng thẩm định ẩm thực',
-  reviewedAt: '2026-10-20T09:00:00Z',
-  equipment: ['noi', 'bep', 'dao_thot'],
+  reviewer: 'Hội đồng thẩm định ẩm thực',
+  reviewed_at: '2026-10-20T09:00:00Z',
+  tags: ['kho', 'dam-da'],
+  equipment: ['noi', 'bep', 'dao-thot'],
   ingredients: [
     {
-      ingredientId: 'thit_ba_chi',
-      amount: 500,
+      ingredient: 'thit-ba-chi',
+      qty: 500,
       unit: 'g',
       role: 'structure' as const,
-      tasteGroup: 'fat' as const,
+      flavor_group: 'fat' as const,
     },
     {
-      ingredientId: 'trung_ga',
-      amount: 4,
-      unit: 'cái',
+      ingredient: 'trung-ga',
+      qty: 4,
+      unit: 'quả',
       role: 'structure' as const,
-      tasteGroup: 'fat' as const,
+      flavor_group: 'fat' as const,
     },
   ],
   steps: [
     {
       id: 'step_1',
-      order: 1,
-      instruction: 'Thái thịt quân cờ và ướp gia vị',
-      type: 'active' as const,
-      duration: 600,
+      title: 'Thái thịt và ướp gia vị',
+      kind: 'active' as const,
+      seconds: 600,
       after: [],
-      resources: ['dao_thot'],
+      resources: ['dao-thot'],
+      text: 'Thái thịt quân cờ và ướp gia vị',
     },
     {
       id: 'step_2',
-      order: 2,
-      instruction: 'Ninh thịt lửa nhỏ cho mềm',
-      type: 'passive' as const,
-      duration: 1800,
+      title: 'Ninh thịt',
+      kind: 'passive' as const,
+      seconds: 1800,
       after: ['step_1'],
       resources: ['noi', 'bep'],
+      text: 'Ninh thịt lửa nhỏ cho mềm',
     },
     {
       id: 'step_3',
-      order: 3,
-      instruction: 'Thêm trứng luộc đảo đều và tắt bếp',
-      type: 'active' as const,
-      duration: 120,
+      title: 'Thêm trứng',
+      kind: 'active' as const,
+      seconds: 120,
       after: ['step_2'],
       resources: ['noi', 'bep'],
+      text: 'Thêm trứng luộc đảo đều và tắt bếp',
     },
   ],
   version: 2,
 };
 
 /**
- * Ca hợp lệ 5: Món ăn nhẹ / đồ uống đơn giản.
+ * Ca hợp lệ 5: Món ăn nhẹ / sinh tố có ghi chú lượng không ép số (amount_note).
  */
 export const VALID_RECIPE_SINH_TO = {
-  synthetic: true,
-  id: 'recipe_sinh_to_bo',
   slug: 'sinh-to-bo',
-  title: 'Sinh tố bơ',
-  servings: 1,
-  prepTime: 120,
-  cookTime: 60,
-  status: 'draft' as const,
-  equipment: ['may_xay', 'ly'],
+  name: 'Sinh tố bơ',
+  servings_base: 1,
+  difficulty: 1,
+  total_minutes: 5,
+  tags: ['thuc-uong', 'trang-mieng'],
+  equipment: ['may-xay', 'ly'],
   ingredients: [
     {
-      ingredientId: 'bo_sap',
-      amount: 1,
-      unit: 'cái',
+      ingredient: 'bo-sap',
+      qty: 1,
+      unit: 'quả',
       role: 'structure' as const,
-      tasteGroup: 'fat' as const,
+      flavor_group: 'fat' as const,
     },
     {
-      ingredientId: 'sua_dac',
-      amount: 30,
-      unit: 'ml',
+      ingredient: 'sua-dac',
+      unit: 'thìa canh',
+      amount_note: 'khoảng 2 thìa vừa ngọt',
       role: 'flavor' as const,
-      tasteGroup: 'sugar' as const,
+      flavor_group: 'sugar' as const,
     },
   ],
   steps: [
     {
       id: 'step_1',
-      order: 1,
-      instruction: 'Nạo ruột bơ cho vào cối cùng sữa đặc',
-      type: 'active' as const,
-      duration: 120,
+      title: 'Nạo bơ',
+      kind: 'active' as const,
+      seconds: 120,
       after: [],
-      resources: ['may_xay'],
+      resources: ['may-xay'],
+      text: 'Nạo ruột bơ cho vào cối cùng sữa đặc',
     },
     {
       id: 'step_2',
-      order: 2,
-      instruction: 'Bấm máy xay nhuyễn mịn trong 60 giây',
-      type: 'active' as const,
-      duration: 60,
+      title: 'Xay nhuyễn',
+      kind: 'active' as const,
+      seconds: 60,
       after: ['step_1'],
-      resources: ['may_xay'],
+      resources: ['may-xay'],
+      text: 'Bấm máy xay nhuyễn mịn trong 60 giây rồi rót ra ly',
     },
   ],
   version: 1,
 };
 
 /**
- * Danh sách 8+ ca cố ý làm sai cấu trúc để kiểm tra validator (Ca sai bắt buộc).
+ * Danh sách ít nhất 10 ca cố ý làm sai cấu trúc để kiểm tra validator (Ca sai bắt buộc).
  */
 export const INVALID_RECIPE_CASES = [
   {
-    name: 'Ca sai 1: Thiếu trường bắt buộc "title"',
+    name: 'Ca sai 1: Thiếu trường bắt buộc "name" (tên món)',
     data: {
-      ...VALID_RECIPE_TRUNG_CHIEN_CA_CHUA,
-      title: undefined,
+      ...VALID_RECIPE_PLAN_ORIGINAL,
+      name: undefined,
     },
-    expectedErrorSubstring: 'title',
+    expectedErrorSubstring: 'name',
   },
   {
-    name: 'Ca sai 2: Số phần ăn (servings) bằng 0 hoặc âm',
+    name: 'Ca sai 2: Số phần ăn (servings_base) bằng 0 hoặc âm',
     data: {
-      ...VALID_RECIPE_TRUNG_CHIEN_CA_CHUA,
-      servings: 0,
+      ...VALID_RECIPE_PLAN_ORIGINAL,
+      servings_base: 0,
     },
-    expectedErrorSubstring: 'servings',
+    expectedErrorSubstring: 'servings_base',
   },
   {
     name: 'Ca sai 3: Trạng thái (status) không thuộc enum cho phép',
     data: {
-      ...VALID_RECIPE_TRUNG_CHIEN_CA_CHUA,
+      ...VALID_RECIPE_PLAN_ORIGINAL,
       status: 'pending_approval',
     },
     expectedErrorSubstring: 'status',
@@ -410,29 +343,29 @@ export const INVALID_RECIPE_CASES = [
   {
     name: 'Ca sai 4: Không có bước nào là active (toàn bộ bước là passive)',
     data: {
-      ...VALID_RECIPE_TRUNG_CHIEN_CA_CHUA,
-      steps: VALID_RECIPE_TRUNG_CHIEN_CA_CHUA.steps.map((s) => ({
+      ...VALID_RECIPE_PLAN_ORIGINAL,
+      steps: VALID_RECIPE_PLAN_ORIGINAL.steps.map((s) => ({
         ...s,
-        type: 'passive',
+        kind: 'passive',
       })),
     },
-    expectedErrorSubstring: 'chủ động',
+    expectedErrorSubstring: 'active',
   },
   {
-    name: 'Ca sai 5: Món reviewed nhưng thiếu người kiểm duyệt (reviewedBy)',
+    name: 'Ca sai 5: Món reviewed nhưng thiếu người kiểm duyệt (reviewer)',
     data: {
       ...VALID_RECIPE_REVIEWED,
-      reviewedBy: null,
+      reviewer: null,
     },
-    expectedErrorSubstring: 'reviewedBy',
+    expectedErrorSubstring: 'reviewer',
   },
   {
     name: 'Ca sai 6: Vai trò nguyên liệu (role) không hợp lệ',
     data: {
-      ...VALID_RECIPE_TRUNG_CHIEN_CA_CHUA,
+      ...VALID_RECIPE_PLAN_ORIGINAL,
       ingredients: [
         {
-          ...VALID_RECIPE_TRUNG_CHIEN_CA_CHUA.ingredients[0],
+          ...VALID_RECIPE_PLAN_ORIGINAL.ingredients[0],
           role: 'magic_role',
         },
       ],
@@ -442,43 +375,107 @@ export const INVALID_RECIPE_CASES = [
   {
     name: 'Ca sai 7: Danh sách nguyên liệu rỗng',
     data: {
-      ...VALID_RECIPE_TRUNG_CHIEN_CA_CHUA,
+      ...VALID_RECIPE_PLAN_ORIGINAL,
       ingredients: [],
     },
     expectedErrorSubstring: 'ingredients',
   },
   {
-    name: 'Ca sai 8: Thời lượng bước (duration) không dương (<= 0 giây)',
+    name: 'Ca sai 8: Thời lượng bước (seconds) không dương (<= 0 giây)',
     data: {
-      ...VALID_RECIPE_TRUNG_CHIEN_CA_CHUA,
+      ...VALID_RECIPE_PLAN_ORIGINAL,
       steps: [
         {
-          ...VALID_RECIPE_TRUNG_CHIEN_CA_CHUA.steps[0],
-          duration: 0,
+          ...VALID_RECIPE_PLAN_ORIGINAL.steps[0],
+          seconds: 0,
         },
       ],
     },
-    expectedErrorSubstring: 'duration',
+    expectedErrorSubstring: 'seconds',
   },
   {
-    name: 'Ca sai 9: Số lượng nguyên liệu (amount) âm',
+    name: 'Ca sai 9: Số lượng nguyên liệu (qty) âm và không có amount_note',
     data: {
-      ...VALID_RECIPE_TRUNG_CHIEN_CA_CHUA,
+      ...VALID_RECIPE_PLAN_ORIGINAL,
       ingredients: [
         {
-          ...VALID_RECIPE_TRUNG_CHIEN_CA_CHUA.ingredients[0],
-          amount: -5,
+          ...VALID_RECIPE_PLAN_ORIGINAL.ingredients[0],
+          qty: -5,
         },
       ],
     },
-    expectedErrorSubstring: 'amount',
+    expectedErrorSubstring: 'qty',
   },
   {
-    name: 'Ca sai 10: Món published nhưng thiếu ngày kiểm duyệt (reviewedAt)',
+    name: 'Ca sai 10: Món published nhưng thiếu ngày kiểm duyệt (reviewed_at)',
     data: {
       ...VALID_RECIPE_PUBLISHED,
-      reviewedAt: '',
+      reviewed_at: '',
     },
-    expectedErrorSubstring: 'reviewedAt',
+    expectedErrorSubstring: 'reviewed_at',
+  },
+  {
+    name: 'Ca sai 11: Bước sử dụng dụng cụ không được khai báo trong equipment (vi phạm quy tắc tài nguyên)',
+    data: {
+      ...VALID_RECIPE_PLAN_ORIGINAL,
+      steps: [
+        {
+          ...VALID_RECIPE_PLAN_ORIGINAL.steps[0],
+          resources: ['noi-ap-suat'], // Dụng cụ này không có trong equipment của món
+        },
+      ],
+    },
+    expectedErrorSubstring: 'equipment',
+  },
+  {
+    name: 'Ca sai 12: Bước phụ thuộc vào id bước không tồn tại trong after',
+    data: {
+      ...VALID_RECIPE_PLAN_ORIGINAL,
+      steps: [
+        {
+          ...VALID_RECIPE_PLAN_ORIGINAL.steps[0],
+          after: ['non_existent_step_id'],
+        },
+      ],
+    },
+    expectedErrorSubstring: 'after',
+  },
+  {
+    name: 'Ca sai 13: Vòng lặp phụ thuộc chu trình giữa các bước (s1 sau s2 và s2 sau s1)',
+    data: {
+      ...VALID_RECIPE_PLAN_ORIGINAL,
+      steps: [
+        {
+          ...VALID_RECIPE_PLAN_ORIGINAL.steps[0],
+          after: ['s2'],
+        },
+        {
+          ...VALID_RECIPE_PLAN_ORIGINAL.steps[1],
+          after: ['s1'],
+        },
+      ],
+    },
+    expectedErrorSubstring: 'chu trình',
+  },
+  {
+    name: 'Ca sai 14: Độ khó (difficulty) vượt quá khoảng cho phép 1-3',
+    data: {
+      ...VALID_RECIPE_PLAN_ORIGINAL,
+      difficulty: 5,
+    },
+    expectedErrorSubstring: 'difficulty',
+  },
+  {
+    name: 'Ca sai 15: Thiếu nội dung hướng dẫn của bước (text để trống)',
+    data: {
+      ...VALID_RECIPE_PLAN_ORIGINAL,
+      steps: [
+        {
+          ...VALID_RECIPE_PLAN_ORIGINAL.steps[0],
+          text: '',
+        },
+      ],
+    },
+    expectedErrorSubstring: 'text',
   },
 ];

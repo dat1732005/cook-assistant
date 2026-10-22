@@ -26,9 +26,9 @@ PATTERNS = {
     "JWT Bearer Token": re.compile(r"\beyJ[a-zA-Z0-9_-]{10,}\.eyJ[a-zA-Z0-9_-]{10,}\.[a-zA-Z0-9_-]{10,}\b"),
 }
 
-# Các phần mở rộng và mẫu tên file nhạy cảm
+# Các phần mở rộng và mẫu tên file nhạy cảm (bỏ qua các file .env.example mẫu)
 SENSITIVE_FILENAME_PATTERNS = [
-    re.compile(r"^\.env.*", re.I),
+    re.compile(r"^\.env(?!\.example).*", re.I),
     re.compile(r".*\.pem$", re.I),
     re.compile(r".*\.key$", re.I),
     re.compile(r".*\.keystore$", re.I),
