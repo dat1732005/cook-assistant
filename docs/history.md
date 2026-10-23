@@ -67,7 +67,7 @@ Kế hoạch mô tả bằng tiếng Việt, dự án đã chuẩn hóa sang enu
 
 ### 2.8. Nâng cấp phiên bản hạ tầng Backend
 - **Kế hoạch ban đầu:** Dự kiến Spring Boot 3.x.
-- **Thực tế triển khai:** Nâng cấp cấu hình Maven Wrapper sử dụng Spring Boot `4.1.0` (kèm Java 21 LTS) theo yêu cầu trực tiếp của chủ dự án và đã đối chiếu bản ổn định GA trên trang chính thức https://spring.io/projects/spring-boot.
+- **Thực tế triển khai:** Nâng cấp cấu hình Maven Wrapper sử dụng Spring Boot `4.1.0` (kèm Java 21 LTS) vì bản 3.4 đã hết hỗ trợ; chủ dự án chấp nhận 4.1.0 nhưng không yêu cầu bản cụ thể, và phiên bản này đã được đối chiếu bản ổn định GA trên trang chính thức https://spring.io/projects/spring-boot.
 
 ### 2.9. Tái cấu trúc `docs/field-names.md` thành hai bảng (A & B) và kiểm thử đồng bộ 100%
 - **Vấn đề trước đây:** Tài liệu liệt kê chung, có một số khóa sai lệch lịch sử (`duration_seconds`, `dependencies`, `visual_cue`).

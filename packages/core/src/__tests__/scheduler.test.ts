@@ -57,7 +57,13 @@ describe('T04: Bộ kiểm thử Scheduler xếp lịch nấu (Bám sát docs/ex
 
     // 3. Chế độ fewest_tools
     const fewestPlan = plan(sampleRecipe, sampleRecipe.servings_base, 'fewest_tools');
-    expect(fewestPlan).toEqual(fastestPlan);
+    expect(fewestPlan).toEqual([
+      { step_id: 's2', start_at: 0, end_at: 90, reason: 'largest_tail' },
+      { step_id: 's3', start_at: 90, end_at: 270, reason: 'largest_tail' },
+      { step_id: 's1', start_at: 270, end_at: 390, reason: 'only_candidate' },
+      { step_id: 's4', start_at: 390, end_at: 630, reason: 'only_candidate' },
+      { step_id: 's5', start_at: 630, end_at: 690, reason: 'only_candidate' },
+    ]);
   });
 
   // --------------------------------------------------------------------------
@@ -341,21 +347,34 @@ describe('T04: Bộ kiểm thử Scheduler xếp lịch nấu (Bám sát docs/ex
 
     expect(jsonBlocks.length).toBeGreaterThanOrEqual(8);
 
-    // Kiểm tra Ca B từ file kỳ vọng
+    // Kiểm tra Ca A, B, C, D, E từ file kỳ vọng
+    const blockA = jsonBlocks.find((b) => b['case'] === 'A') as unknown as ExpectedCaseBlock | undefined;
     const blockB = jsonBlocks.find((b) => b['case'] === 'B') as unknown as ExpectedCaseBlock | undefined;
     const blockC = jsonBlocks.find((b) => b['case'] === 'C') as unknown as ExpectedCaseBlock | undefined;
     const blockD = jsonBlocks.find((b) => b['case'] === 'D') as unknown as ExpectedCaseBlock | undefined;
     const blockE = jsonBlocks.find((b) => b['case'] === 'E') as unknown as ExpectedCaseBlock | undefined;
 
+    expect(blockA).toBeDefined();
     expect(blockB).toBeDefined();
     expect(blockC).toBeDefined();
     expect(blockD).toBeDefined();
     expect(blockE).toBeDefined();
 
-    if (!blockB || !blockC || !blockD || !blockE) {
+    if (!blockA || !blockB || !blockC || !blockD || !blockE) {
       throw new Error('Không tìm thấy đủ các khối ca kiểm thử trong docs/expected/T04.md');
     }
 
+    // 1. Ca A: fastest và fewest_tools
+    const planAFastest = plan(sampleRecipe, sampleRecipe.servings_base, 'fastest');
+    expect(planAFastest.map((s) => ({ step: s.step_id, start: s.start_at, end: s.end_at, reason: s.reason }))).toEqual(
+      blockA.expected.fastest
+    );
+    const planAFewest = plan(sampleRecipe, sampleRecipe.servings_base, 'fewest_tools');
+    expect(planAFewest.map((s) => ({ step: s.step_id, start: s.start_at, end: s.end_at, reason: s.reason }))).toEqual(
+      blockA.expected.fewest_tools
+    );
+
+    // 2. Ca B: fastest và fewest_tools
     const planBFastest = plan({ steps: blockB.steps }, 2, 'fastest');
     expect(planBFastest.map((s) => ({ step: s.step_id, start: s.start_at, end: s.end_at, reason: s.reason }))).toEqual(
       blockB.expected.fastest
@@ -365,22 +384,34 @@ describe('T04: Bộ kiểm thử Scheduler xếp lịch nấu (Bám sát docs/ex
       blockB.expected.fewest_tools
     );
 
-    // Kiểm tra Ca C từ file kỳ vọng
+    // 3. Ca C: fastest và fewest_tools
     const planCFastest = plan({ steps: blockC.steps }, 2, 'fastest');
     expect(planCFastest.map((s) => ({ step: s.step_id, start: s.start_at, end: s.end_at, reason: s.reason }))).toEqual(
       blockC.expected.fastest
     );
+    const planCFewest = plan({ steps: blockC.steps }, 2, 'fewest_tools');
+    expect(planCFewest.map((s) => ({ step: s.step_id, start: s.start_at, end: s.end_at, reason: s.reason }))).toEqual(
+      blockC.expected.fewest_tools
+    );
 
-    // Kiểm tra Ca D từ file kỳ vọng
+    // 4. Ca D: fastest và fewest_tools
     const planDFastest = plan({ steps: blockD.steps }, 2, 'fastest');
     expect(planDFastest.map((s) => ({ step: s.step_id, start: s.start_at, end: s.end_at, reason: s.reason }))).toEqual(
       blockD.expected.fastest
     );
+    const planDFewest = plan({ steps: blockD.steps }, 2, 'fewest_tools');
+    expect(planDFewest.map((s) => ({ step: s.step_id, start: s.start_at, end: s.end_at, reason: s.reason }))).toEqual(
+      blockD.expected.fewest_tools
+    );
 
-    // Kiểm tra Ca E từ file kỳ vọng
+    // 5. Ca E: fastest và fewest_tools
     const planEFastest = plan({ steps: blockE.steps }, 2, 'fastest');
     expect(planEFastest.map((s) => ({ step: s.step_id, start: s.start_at, end: s.end_at, reason: s.reason }))).toEqual(
       blockE.expected.fastest
+    );
+    const planEFewest = plan({ steps: blockE.steps }, 2, 'fewest_tools');
+    expect(planEFewest.map((s) => ({ step: s.step_id, start: s.start_at, end: s.end_at, reason: s.reason }))).toEqual(
+      blockE.expected.fewest_tools
     );
   });
 
