@@ -97,8 +97,8 @@ Kế hoạch mô tả bằng tiếng Việt, dự án đã chuẩn hóa sang enu
 - **Thực tế triển khai trong T03:**
   - Tuân thủ quy tắc R1: **Chỉ làm khung và script kiểm tra, tuyệt đối KHÔNG tạo nội dung dữ liệu thật.** Toàn bộ các file `data/ingredients.json`, `data/equipment.json`, `data/storage_rules.json`, `data/safety_rules.json` và thư mục `data/recipes/` để rỗng hợp lệ (mảng `[]`).
   - **Không tạo `prices.json`:** Giá tham khảo được lưu trực tiếp trong trường `ingredient.reference_price` theo đúng bảng CSDL của `plan.md` dòng 175.
-  - **Đề xuất thực thể `equipment`:** Kế hoạch chưa có schema cho `equipment`; đã đề xuất các trường `id`, `name`, `source`, `confirmed_by`, `missing_fields` tại mục 12 của `docs/field-names.md` dưới dạng "THÊM, kế hoạch không có" và chờ duyệt trước khi đưa vào mã nguồn.
-  - Xây dựng công cụ kiểm định toàn diện `scripts/validate-data.js` (chạy bằng `pnpm validate-data`), hỗ trợ chế độ nghiêm ngặt `--strict` và chế độ báo cáo `--report-missing` (gom theo tệp, trường và nguồn cần tìm).
+  - **Thực thể `equipment` đã duyệt:** Các trường `id`, `name`, `source`, `confirmed_by`, `missing_fields` đã được chủ dự án chính thức phê duyệt và đưa vào schema Zod (`packages/core/src/schemas/equipment.ts`) cũng như tài liệu `docs/field-names.md` (mục 12).
+  - Xây dựng công cụ kiểm định toàn diện `scripts/validate-data.js` (chạy bằng `pnpm validate-data`), hỗ trợ chế độ nghiêm ngặt `--strict` và chế độ báo cáo `--report-missing` (gom theo tệp, trường và nguồn cần tìm; đã khử trùng lặp dòng `allergen_codes`).
 
 ### 2.13. Bộ xếp lịch nấu ăn T04 (Scheduler)
 - **Kế hoạch:** Mục "Thuật toán" phần 1 "Xếp lịch nấu" ([`docs/plan.md:L250-L271`](plan.md#L250-L271)).
@@ -110,20 +110,21 @@ Kế hoạch mô tả bằng tiếng Việt, dự án đã chuẩn hóa sang enu
     + `replan.ts`: Tính lại lịch trình cho các bước chưa chạy khi người dùng bấm Xong sớm hoặc muộn; giữ nguyên tuyệt đối `endsAt` của các bước passive đang chạy nền.
     + `manual-check.ts`: Hàm `checkManualStart()` chặn (`blocked`) khi bước có `safety_rule` chưa xác nhận, cảnh báo (`warn`) khi bước phụ thuộc `after` chưa xong, và cho phép (`ok`) khi thỏa mãn.
   - T04.8: Tạo [`docs/limitations.md`](limitations.md) ghi nhận giới hạn: thời lượng bước không đổi khi đổi số phần ăn trong phiên bản MVP.
+  - Bộ kiểm định băm toàn vẹn: Tích hợp kiểm thử đối chiếu mã băm SHA-256 (`89f77ecc4fa5bd7e104315638572d06c3dbb8f3b61c077ecd007526addae2ca7`) của `docs/expected/T04.md`, chứng minh nhạy cảm với việc sửa nội dung và trơ với khoảng trắng cuối file.
 
 ---
 
 ## 3. Trạng thái hiện tại của hệ thống (Tính đến hết T04)
 
-- **Test Suite (`packages/core`):** 123 ca kiểm thử tự động pass 100% trên cả 4 file test.
-  - 18 ca kiểm thử Scheduler (T04) khớp 100% với các khối JSON tính tay trong `docs/expected/T04.md` (Ca A, B, C, D, E, F, G, H, T04.8).
+- **Test Suite (`packages/core`):** 129 ca kiểm thử tự động pass 100% trên cả 4 file test.
+  - 21 ca kiểm thử Scheduler (T04), bao gồm 18 ca kiểm thử thuật toán khớp 100% với các khối JSON tính tay trong `docs/expected/T04.md` (Ca A, B, C, D, E, F, G, H, T04.8) và 3 ca kiểm thử toàn vẹn băm SHA-256 bản gốc của chủ dự án.
   - 15 ca kiểm định dữ liệu và cờ `--strict`, `--report-missing` (T03).
-  - 88 ca kiểm thử schema Zod, đồng bộ tài liệu `docs/field-names.md`, quy tắc R2/R3, an toàn dị ứng, quy đổi đơn vị (T02).
+  - 91 ca kiểm thử schema Zod (11 thực thể bao gồm cả thực thể `equipment` đã duyệt), đồng bộ tài liệu `docs/field-names.md`, quy tắc R2/R3, an toàn dị ứng, quy đổi đơn vị (T02).
   - 2 ca kiểm thử liên kết hệ thống (T01).
 - **Kiểm tra tĩnh & Mã nguồn:**
   - `build` thành công, sạch sẽ (`tsc --project tsconfig.build.json`).
   - `typecheck` không có lỗi trên toàn bộ workspace.
   - `eslint` sạch sẽ 100%, 0 lỗi, 0 cảnh báo.
   - `pnpm validate-data` và `pnpm validate-data --strict` sạch sẽ trên thư mục `data/` rỗng.
-  - `scan-secrets.py` quét toàn bộ lịch sử 15 commits: sạch 100%.
+  - `scan-secrets.py` quét toàn bộ lịch sử: sạch 100%.
 - **Tiến độ tổng thể:** Đã đóng hoàn tất T01, T02, T03 và T04. **Tuyệt đối chưa làm T05.**
