@@ -28,6 +28,7 @@ import {
   StorageRuleSchema,
   SafetyRuleSchema,
   EquipmentSchema,
+  AiUsageLogSchema,
 } from '../schemas/index.js';
 import {
   validateRecipe,
@@ -35,6 +36,7 @@ import {
   validatePantryItem,
   validatePantryEvent,
   validateEquipment,
+  validateAiUsageLog,
   validateCookSession,
   validateUserProfile,
   validateStorageRule,
@@ -239,9 +241,10 @@ describe('T02: Kiểm tra đồng bộ 100% giữa docs/field-names.md và Zod S
     storage_rule: StorageRuleSchema.shape,
     safety_rule: SafetyRuleSchema.shape,
     equipment: EquipmentSchema.shape,
+    ai_usage_log: AiUsageLogSchema.shape,
   };
 
-  it('Tất cả 11 thực thể đều có mặt trong docs/field-names.md', () => {
+  it('Tất cả 12 thực thể đều có mặt trong docs/field-names.md', () => {
     expect(Object.keys(schemaMap).sort()).toEqual(Object.keys(docEntities).sort());
   });
 
@@ -1196,3 +1199,48 @@ describe('T02: Kiểm tra thực thể Equipment (được duyệt, R2/R3)', () 
     expect(result.success).toBe(false);
   });
 });
+
+describe('T05: Kiểm tra thực thể AiUsageLog (được duyệt)', () => {
+  it('Ca hợp lệ 1: Nhật ký AI đầy đủ token và chi phí cost_micro_usd', () => {
+    const valid = {
+      id: 'ai_log_001',
+      user_id: 'usr_default',
+      kind: 'substitute',
+      tokens_in: 250,
+      tokens_out: 80,
+      cost_micro_usd: 1200,
+      created_at: '2026-10-23T10:00:00Z',
+    };
+    const result = validateAiUsageLog(valid);
+    expect(result.success).toBe(true);
+  });
+
+  it('Ca hợp lệ 2: Nhật ký AI cho phép tokens_in, tokens_out và cost_micro_usd là null (không default 0)', () => {
+    const validWithNulls = {
+      id: 'ai_log_002',
+      user_id: 'usr_default',
+      kind: 'qa',
+      tokens_in: null,
+      tokens_out: null,
+      cost_micro_usd: null,
+      created_at: '2026-10-23T10:05:00Z',
+    };
+    const result = validateAiUsageLog(validWithNulls);
+    expect(result.success).toBe(true);
+  });
+
+  it('Ca sai: Bắt lỗi khi kind không hợp lệ hoặc tokens âm', () => {
+    const invalid = {
+      id: 'ai_log_003',
+      user_id: 'usr_default',
+      kind: 'invalid_kind',
+      tokens_in: -10,
+      tokens_out: null,
+      cost_micro_usd: null,
+      created_at: '2026-10-23T10:05:00Z',
+    };
+    const result = validateAiUsageLog(invalid);
+    expect(result.success).toBe(false);
+  });
+});
+

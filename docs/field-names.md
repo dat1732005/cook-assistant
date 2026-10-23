@@ -238,6 +238,7 @@ Tài liệu này ghi nhận mọi tên trường và giá trị liệt kê (enum
 | `StorageLocationEnum` | `'fridge'`<br>`'freezer'`<br>`'room_temperature'` | `ngăn mát`<br>`ngăn đá`<br>`nhiệt độ phòng` | `storage_rule.location` (dòng 183) |
 | `OptimizationModeEnum` | `'fastest'`<br>`'fewest_tools'` | `tiêu chí tối ưu`<br>(nhanh nhất, ít dụng cụ nhất) | `cook_session.optimization_mode` (dòng 181, mục T04.1) |
 | `SafetyCategoryEnum` | `'temperature'`<br>`'cross_contamination'`<br>`'hygiene'`<br>`'storage'`<br>`'allergy'` | THÊM, kế hoạch không có: phân loại quy tắc an toàn thực phẩm khi tách thành thực thể độc lập | `safety_rule.category` |
+| `AiUsageLogKindEnum` | `'substitute'`<br>`'qa'`<br>`'scan'` | THÊM, kế hoạch không có: loại tác vụ AI trong ai_usage_log | `ai_usage_log.kind` (dòng 182) |
 
 ---
 
@@ -254,3 +255,21 @@ Tài liệu này ghi nhận mọi tên trường và giá trị liệt kê (enum
 | `source` | THÊM, kế hoạch không có: nguồn trích dẫn dữ liệu theo R3 | — | `string` (optional) |
 | `confirmed_by` | THÊM, kế hoạch không có: người xác nhận dữ liệu theo R3 | — | `string` (optional) |
 | `missing_fields` | THÊM, kế hoạch không có: danh sách trường còn thiếu theo R2 | — | `string[]` (default []) |
+
+---
+
+## 13. Thực thể `ai_usage_log` (Nhật ký sử dụng AI)
+
+### Bảng A: Khóa nguyên văn từ docs/plan.md
+*(Không có bảng riêng với khóa tiếng Anh trong docs/plan.md; dòng 182 mô tả các cột bằng tiếng Việt: "id, user_id, loại (substitute, qa, scan), token vào và ra, chi phí, thời điểm").*
+
+### Bảng B: Tên do dự án đặt và đã được chủ dự án chính thức phê duyệt
+| Khóa schema | Mô tả tiếng Việt trong docs/plan.md / Quy tắc | Dòng plan.md | Kiểu dữ liệu / Quy ước |
+| --- | --- | --- | --- |
+| `id` | THÊM, kế hoạch không có: định danh bản ghi nhật ký sử dụng AI | — | `string` (min 1, UUID hoặc chuỗi định danh) |
+| `user_id` | THÊM, kế hoạch không có: định danh người dùng sử dụng | — | `string` (min 1, khóa ngoại tham chiếu user_profile.id) |
+| `kind` | THÊM, kế hoạch không có: loại tác vụ AI | — | Enum: `'substitute' \| 'qa' \| 'scan'` |
+| `tokens_in` | THÊM, kế hoạch không có: số lượng token đầu vào (cho phép null) | — | `number \| null` (integer >= 0) |
+| `tokens_out` | THÊM, kế hoạch không có: số lượng token đầu ra (cho phép null) | — | `number \| null` (integer >= 0) |
+| `cost_micro_usd` | THÊM, kế hoạch không có: chi phí tính theo micro USD (1 USD = 1,000,000 micro USD, cho phép null) | — | `number \| null` (integer >= 0) |
+| `created_at` | THÊM, kế hoạch không có: thời điểm thực hiện cuộc gọi AI | — | `string` (ISO-8601 UTC) |

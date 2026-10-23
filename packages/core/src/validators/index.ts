@@ -27,6 +27,8 @@ import {
   StorageRuleSchema,
   Equipment,
   EquipmentSchema,
+  AiUsageLog,
+  AiUsageLogSchema,
 } from '../schemas/index.js';
 
 /**
@@ -212,5 +214,23 @@ export function validateEquipment(data: unknown): ValidationResult<Equipment> {
  */
 export function parseEquipment(data: unknown): Equipment {
   return EquipmentSchema.parse(data);
+}
+
+/**
+ * Kiểm định nhật ký sử dụng AI (AiUsageLog).
+ */
+export function validateAiUsageLog(data: unknown): ValidationResult<AiUsageLog> {
+  const result = AiUsageLogSchema.safeParse(data);
+  if (result.success) {
+    return { success: true, data: result.data };
+  }
+  return { success: false, errors: formatZodErrors(result.error) };
+}
+
+/**
+ * Phân tích dữ liệu thành AiUsageLog (ném ngoại lệ nếu sai).
+ */
+export function parseAiUsageLog(data: unknown): AiUsageLog {
+  return AiUsageLogSchema.parse(data);
 }
 
