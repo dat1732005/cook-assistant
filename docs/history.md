@@ -18,6 +18,7 @@ Tài liệu này ghi lại toàn bộ tiến độ, lịch sử các phiên làm
 | **T02-FIX (phần 6)** | `e082fd5` | 22/10/2026 | Chuyển `ingredient.allergen_code` thành `allergen_codes` (mảng danh sách để tránh bỏ sót dị ứng); bổ sung mục enum tiếng Anh vào `docs/field-names.md`; 64 unit tests pass 100%. | **ĐÃ XONG** |
 | **T03** | `556d0fe`<br>`3ee6904` | 23/10/2026 | Khởi tạo khung tệp dữ liệu rỗng chuẩn (`ingredients.json`, `equipment.json`, `storage_rules.json`, `safety_rules.json`, `recipes/`); xây dựng script `scripts/validate-data.js` (kiểm tra 8 quy tắc toàn vẹn, cờ `--strict`, cờ `--report-missing`); gộp vào `main`. | **ĐÃ XONG** |
 | **T04** | (nhánh `task/T04`) | 23/10/2026 | Xây dựng bộ xếp lịch nấu ăn (Scheduler): hàm `plan()`, `replan()`, `checkManualStart()`, `computeTails()`; bám sát tuyệt đối `docs/expected/T04.md` và `docs/plan.md`; 123 tests pass 100%. | **ĐÃ XONG** |
+| **T05** | `1836929` | 23/10/2026 | Xây dựng tầng CSDL SQLite (SqlDriver cho Node và Expo SQLite), migration runner, công cụ đóng gói dữ liệu `bundle-data.js`, bộ nạp CSDL `data-loader.ts`, `RecipeRepo` với bộ lọc an toàn dị ứng; 43 acceptance tests khớp 100% `docs/expected/T05.md`. | **ĐÃ XONG** |
 
 ---
 
@@ -112,19 +113,31 @@ Kế hoạch mô tả bằng tiếng Việt, dự án đã chuẩn hóa sang enu
   - T04.8: Tạo [`docs/limitations.md`](limitations.md) ghi nhận giới hạn: thời lượng bước không đổi khi đổi số phần ăn trong phiên bản MVP.
   - Bộ kiểm định băm toàn vẹn: Tích hợp kiểm thử đối chiếu mã băm SHA-256 (`89f77ecc4fa5bd7e104315638572d06c3dbb8f3b61c077ecd007526addae2ca7`) của `docs/expected/T04.md`, chứng minh nhạy cảm với việc sửa nội dung và trơ với khoảng trắng cuối file.
 
+### 2.14. Tầng cơ sở dữ liệu SQLite và bộ nạp dữ liệu T05
+- **Kế hoạch:** SQLite cục bộ lưu trên thiết bị (dòng 170-190 của `docs/plan.md`).
+- **Tài liệu kỳ vọng:** [`docs/expected/T05.md`](expected/T05.md) do chủ dự án cung cấp.
+- **Thực tế triển khai:**
+  - `SqlDriver`: Giao diện truy cập cơ sở dữ liệu trừu tượng với 2 bản cài đặt: `NodeSqlDriver` (`node:sqlite` tích hợp trên Node 22 dành riêng cho chạy test và script) và `ExpoSqlDriver` (`expo-sqlite` dành cho ứng dụng React Native di động). Cả hai đều kích hoạt `PRAGMA foreign_keys = ON;`.
+  - Bảng `ai_usage_log`: Điều chỉnh theo quyết định chủ dự án: `tokens_in`, `tokens_out`, `cost_micro_usd` cho phép NULL, không DEFAULT 0; chi phí lưu số nguyên micro USD.
+  - Script đóng gói `scripts/bundle-data.js`: Đóng gói dữ liệu sang `apps/mobile/assets/data/`. Chỉ nạp các món ở trạng thái `published` hoặc `reviewed`. Chặn tuyệt đối `fixtures/` khỏi gói phát hành. Cung cấp cờ dev nạp cả `draft` khi kiểm thử phát triển.
+  - `RecipeRepo.list(filters)`: Hỗ trợ lọc theo thời gian tối đa (`max_minutes`), dụng cụ đang có (`available_equipment`), và mã dị ứng (`allergies`). Theo nguyên tắc an toàn y tế tuyệt đối, khi người dùng đã khai ít nhất một mã dị ứng, các nguyên liệu có `allergen_codes: null` (thông tin dị ứng chưa được xác nhận) bị loại bỏ ngay lập tức. Thứ tự trả về cố định theo `slug ASC`.
+  - Bộ kiểm định T05: 43 ca kiểm thử trong `packages/core/src/__tests__/t05-db.test.ts` pass 100%, bảo đảm thao tác trên thư mục tạm và tuân thủ các quy tắc dữ liệu sạch.
+
 ---
 
-## 3. Trạng thái hiện tại của hệ thống (Tính đến hết T04)
+## 3. Trạng thái hiện tại của hệ thống (Tính đến hết T05)
 
-- **Test Suite (`packages/core`):** 129 ca kiểm thử tự động pass 100% trên cả 4 file test.
-  - 21 ca kiểm thử Scheduler (T04), bao gồm 18 ca kiểm thử thuật toán khớp 100% với các khối JSON tính tay trong `docs/expected/T04.md` (Ca A, B, C, D, E, F, G, H, T04.8) và 3 ca kiểm thử toàn vẹn băm SHA-256 bản gốc của chủ dự án.
-  - 15 ca kiểm định dữ liệu và cờ `--strict`, `--report-missing` (T03).
-  - 91 ca kiểm thử schema Zod (11 thực thể bao gồm cả thực thể `equipment` đã duyệt), đồng bộ tài liệu `docs/field-names.md`, quy tắc R2/R3, an toàn dị ứng, quy đổi đơn vị (T02).
-  - 2 ca kiểm thử liên kết hệ thống (T01).
+- **Test Suite toàn workspace:** 178 ca kiểm thử tự động pass 100% trên cả 6 tệp test (`packages/core` và `apps/mobile`).
+  - 43 ca kiểm thử T05 DB & Data Loader (`t05-db.test.ts`) khớp 100% `docs/expected/T05.md`.
+  - 1 ca kiểm thử khói SQLite (`sqlite-smoke.test.ts`).
+  - 21 ca kiểm thử Scheduler T04 (`scheduler.test.ts`).
+  - 15 ca kiểm định dữ liệu T03 (`validate-data.test.ts`).
+  - 96 ca kiểm thử schema, đồng bộ field-names, quy tắc R2/R3, an toàn dị ứng, quy đổi đơn vị (`schema.test.ts`).
+  - 2 ca kiểm thử liên kết hệ thống T01 (`linking.test.ts`).
 - **Kiểm tra tĩnh & Mã nguồn:**
-  - `build` thành công, sạch sẽ (`tsc --project tsconfig.build.json`).
-  - `typecheck` không có lỗi trên toàn bộ workspace.
-  - `eslint` sạch sẽ 100%, 0 lỗi, 0 cảnh báo.
-  - `pnpm validate-data` và `pnpm validate-data --strict` sạch sẽ trên thư mục `data/` rỗng.
-  - `scan-secrets.py` quét toàn bộ lịch sử: sạch 100%.
-- **Tiến độ tổng thể:** Đã đóng hoàn tất T01, T02, T03 và T04. **Tuyệt đối chưa làm T05.**
+  - `pnpm build` thành công, sạch sẽ.
+  - `pnpm typecheck` thành công 100% không có lỗi.
+  - `pnpm lint` sạch sẽ 100%, 0 lỗi, 0 cảnh báo.
+  - `pnpm validate-data --strict` sạch sẽ trên thư mục `data/` rỗng.
+  - `python scripts/scan-secrets.py` quét toàn bộ lịch sử Git: sạch 100%.
+- **Tiến độ tổng thể:** Đã đóng hoàn tất T01, T02, T03, T04 và T05 (`1836929`). Đã gộp T05 vào `main` và bắt đầu triển khai T06 trên nhánh `task/T06`.
