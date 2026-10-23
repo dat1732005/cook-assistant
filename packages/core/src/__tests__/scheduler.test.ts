@@ -10,6 +10,7 @@
 import { describe, it, expect } from 'vitest';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import * as crypto from 'node:crypto';
 import {
   plan,
   replan,
@@ -382,4 +383,48 @@ describe('T04: Bộ kiểm thử Scheduler xếp lịch nấu (Bám sát docs/ex
       blockE.expected.fastest
     );
   });
+
+  // --------------------------------------------------------------------------
+  // Test 11: Kiểm tra tính toàn vẹn SHA-256 của docs/expected/T04.md
+  // Chuẩn hóa: đổi CRLF -> LF, trimEnd(), tính SHA-256 trên chuỗi UTF-8 không BOM.
+  // --------------------------------------------------------------------------
+  const EXPECTED_T04_HASH = '89f77ecc4fa5bd7e104315638572d06c3dbb8f3b61c077ecd007526addae2ca7';
+
+  function computeExpectedFileHash(rawContent: string): string {
+    const cleanContent = rawContent.startsWith('\uFEFF') ? rawContent.slice(1) : rawContent;
+    const normalized = cleanContent.replace(/\r\n/g, '\n').trimEnd();
+    return crypto.createHash('sha256').update(normalized, 'utf8').digest('hex');
+  }
+
+  it('T04: Mã băm SHA-256 của docs/expected/T04.md khớp tuyệt đối với bản gốc của chủ dự án (89f77ecc...)', () => {
+    const expectedFilePath = path.resolve(__dirname, '../../../../docs/expected/T04.md');
+    const rawContent = fs.readFileSync(expectedFilePath, 'utf-8');
+    const hash = computeExpectedFileHash(rawContent);
+    expect(hash).toBe(EXPECTED_T04_HASH);
+  });
+
+  it('T04: Test băm phải ĐỎ khi đổi một ký tự bất kỳ trong nội dung docs/expected/T04.md', () => {
+    const expectedFilePath = path.resolve(__dirname, '../../../../docs/expected/T04.md');
+    const rawContent = fs.readFileSync(expectedFilePath, 'utf-8');
+    const tamperedContent = rawContent.replace('case', 'kase');
+    expect(tamperedContent).not.toBe(rawContent);
+    const tamperedHash = computeExpectedFileHash(tamperedContent);
+    expect(tamperedHash).not.toBe(EXPECTED_T04_HASH);
+  });
+
+  it('T04: Test băm KHÔNG ĐỎ khi chỉ thêm hoặc bớt dòng trống và khoảng trắng ở cuối file docs/expected/T04.md', () => {
+    const expectedFilePath = path.resolve(__dirname, '../../../../docs/expected/T04.md');
+    const rawContent = fs.readFileSync(expectedFilePath, 'utf-8');
+
+    // Thêm nhiều dòng trống, khoảng trắng, CRLF ở cuối
+    const withExtraTrailing = rawContent + '\n\n   \r\n\t\n\n';
+    const hashWithExtra = computeExpectedFileHash(withExtraTrailing);
+    expect(hashWithExtra).toBe(EXPECTED_T04_HASH);
+
+    // Bỏ dòng trống ở cuối (trimEnd)
+    const trimmedAtEnd = rawContent.trimEnd();
+    const hashTrimmed = computeExpectedFileHash(trimmedAtEnd);
+    expect(hashTrimmed).toBe(EXPECTED_T04_HASH);
+  });
 });
+
