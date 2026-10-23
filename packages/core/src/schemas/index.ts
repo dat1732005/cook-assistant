@@ -8,6 +8,7 @@
  */
 
 export * from './safety.js';
+export * from './equipment.js';
 export * from './ingredient.js';
 export * from './recipe.js';
 export * from './pantry.js';

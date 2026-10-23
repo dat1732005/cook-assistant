@@ -1,5 +1,3 @@
-#!/usr/bin/env node
-
 /**
  * File: scripts/validate-data.js
  * Làm gì: Script kiểm tra tính toàn vẹn và hợp lệ của toàn bộ dữ liệu (T03.2),
@@ -23,6 +21,7 @@ import {
   RecipeSchema,
   StorageRuleSchema,
   SafetyRuleSchema,
+  EquipmentSchema,
   convertToBaseUnit,
 } from '../packages/core/dist/index.js';
 
@@ -97,8 +96,11 @@ export function validateData(options = {}) {
               }
             }
 
-            // Ghi nhận allergen_codes: null
-            if (parsed.data.allergen_codes === null) {
+            // Ghi nhận allergen_codes: null (nếu chưa có trong missing_fields để tránh trùng lặp)
+            if (
+              parsed.data.allergen_codes === null &&
+              (!Array.isArray(parsed.data.missing_fields) || !parsed.data.missing_fields.includes('allergen_codes'))
+            ) {
               missingItems.push({
                 file: 'ingredients.json',
                 itemId: parsed.data.id,
@@ -129,21 +131,27 @@ export function validateData(options = {}) {
         raw.forEach((item, index) => {
           if (typeof item === 'string') {
             equipmentSet.add(item);
-          } else if (item && typeof item === 'object' && typeof item.id === 'string') {
-            equipmentSet.add(item.id);
-            if (Array.isArray(item.missing_fields)) {
-              for (const field of item.missing_fields) {
-                missingItems.push({
-                  file: 'equipment.json',
-                  itemId: item.id,
-                  itemName: item.name ?? item.id,
-                  missingField: field,
-                  sourceType: determineSourceType(field),
-                });
+          } else if (item && typeof item === 'object') {
+            const parsed = EquipmentSchema.safeParse(item);
+            if (!parsed.success) {
+              const issues = parsed.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`).join('; ');
+              errors.push(`equipment.json [vị trí ${index}, id: ${item.id ?? 'chưa có'}]: ${issues}`);
+            } else {
+              equipmentSet.add(parsed.data.id);
+              if (Array.isArray(parsed.data.missing_fields)) {
+                for (const field of parsed.data.missing_fields) {
+                  missingItems.push({
+                    file: 'equipment.json',
+                    itemId: parsed.data.id,
+                    itemName: parsed.data.name ?? parsed.data.id,
+                    missingField: field,
+                    sourceType: determineSourceType(field),
+                  });
+                }
               }
             }
           } else {
-            errors.push(`equipment.json [vị trí ${index}]: Mục dụng cụ phải là chuỗi id hoặc đối tượng có trường 'id'`);
+            errors.push(`equipment.json [vị trí ${index}]: Mục dụng cụ phải là chuỗi id hoặc đối tượng hợp lệ`);
           }
         });
       }

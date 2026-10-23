@@ -16,8 +16,8 @@ Tài liệu này ghi lại toàn bộ tiến độ, lịch sử các phiên làm
 | **T02-FIX (phần 4)** | `919f443`<br>`8bd18b5` | 22/10/2026 | Cho phép ngoại lệ `!.env.example`; nạp tài liệu `docs/plan.md` chính thức; chuyển `RecipeSchema` sang chuẩn `snake_case` nguyên văn; xác thực thành công JSON mẫu món "Trứng chiên cà chua". | **ĐÃ XONG** |
 | **T02-FIX (phần 5)** | `3bfafb2` | 22/10/2026 | Chuyển nốt 5 thực thể (`ingredient`, `pantry_item`, `pantry_event`, `cook_session`, `user_profile`, `storage_rule`) sang đúng khóa của `plan.md`; đọc động JSON mẫu từ `plan.md`; tạo `docs/field-names.md`. | **ĐÃ XONG** |
 | **T02-FIX (phần 6)** | `e082fd5` | 22/10/2026 | Chuyển `ingredient.allergen_code` thành `allergen_codes` (mảng danh sách để tránh bỏ sót dị ứng); bổ sung mục enum tiếng Anh vào `docs/field-names.md`; 64 unit tests pass 100%. | **ĐÃ XONG** |
-| **T02-FIX (phần 7)** | `3186e28`<br>`4213d4a`<br>`65c0bb0` | 22/10/2026 | Tái cấu trúc `field-names.md` thành 2 bảng A & B, loại bỏ tên sai cũ; siết quy tắc R2/R3 và an toàn dị ứng; mở rộng test đối chiếu nguyên văn dòng plan.md; gộp vào `main`. | **ĐÃ XONG** |
-| **T03** | (nhánh `task/T03`) | 23/10/2026 | Khởi tạo khung tệp dữ liệu rỗng chuẩn (`ingredients.json`, `equipment.json`, `storage_rules.json`, `safety_rules.json`, `recipes/`); xây dựng script `scripts/validate-data.js` (kiểm tra 8 quy tắc toàn vẹn, cờ `--strict`, cờ `--report-missing`); bộ test fixtures độc lập đạt 105 tests pass 100%. | **ĐÃ XONG** |
+| **T03** | `556d0fe`<br>`3ee6904` | 23/10/2026 | Khởi tạo khung tệp dữ liệu rỗng chuẩn (`ingredients.json`, `equipment.json`, `storage_rules.json`, `safety_rules.json`, `recipes/`); xây dựng script `scripts/validate-data.js` (kiểm tra 8 quy tắc toàn vẹn, cờ `--strict`, cờ `--report-missing`); gộp vào `main`. | **ĐÃ XONG** |
+| **T04** | (nhánh `task/T04`) | 23/10/2026 | Xây dựng bộ xếp lịch nấu ăn (Scheduler): hàm `plan()`, `replan()`, `checkManualStart()`, `computeTails()`; bám sát tuyệt đối `docs/expected/T04.md` và `docs/plan.md`; 123 tests pass 100%. | **ĐÃ XONG** |
 
 ---
 
@@ -63,11 +63,11 @@ Kế hoạch mô tả bằng tiếng Việt, dự án đã chuẩn hóa sang enu
 
 ### 2.7. Xử lý đơn vị `chén` theo quy tắc R2 (`MISSING`)
 - **Kế hoạch (dòng 358):** Mọi lượng quy về đơn vị gốc (`g`, `ml`, `cái`).
-- **Thực tế triển khai:** Đơn vị đời thường `thìa cà phê` (5 ml), `thìa canh` (15 ml) có quy chuẩn thể tích rõ ràng. Riêng đơn vị `chén` thay đổi rất lớn tùy theo vùng miền/loại chén (chén cơm ~180-200ml, cup phương Tây ~240-250ml) và chưa có nguồn y tế chính thức xác nhận. Theo quy tắc R2 (`docs/tasks.md`), hệ thống đánh dấu quy đổi đơn vị `chén` là `MISSING` và ném lỗi rõ ràng thay vì tự đoán số.
+- **Thực tế triển khai:** Đơn vị đời thường `thìa cà phê` (5 ml), `thìa canh` (15 ml) được giữ lại nhưng chú thích rõ "quy ước tạm, chờ xác nhận". Riêng đơn vị `chén` chưa có quy chuẩn thể tích chính thức và chưa có nguồn y tế xác nhận, nên tuyệt đối không điền bất kỳ con số nào. Theo quy tắc R2 (`docs/tasks.md`), hệ thống đánh dấu quy đổi đơn vị `chén` là `MISSING` và ném lỗi rõ ràng thay vì tự đoán số.
 
 ### 2.8. Nâng cấp phiên bản hạ tầng Backend
 - **Kế hoạch ban đầu:** Dự kiến Spring Boot 3.x.
-- **Thực tế triển khai:** Nâng cấp cấu hình Maven Wrapper sử dụng Spring Boot `4.1.0` (kèm Java 21 LTS) theo chỉ đạo kỹ thuật để đón đầu chu kỳ hỗ trợ dài hạn.
+- **Thực tế triển khai:** Nâng cấp cấu hình Maven Wrapper sử dụng Spring Boot `4.1.0` (kèm Java 21 LTS) vì bản 3.4 đã hết hỗ trợ; chủ dự án chấp nhận 4.1.0 nhưng không yêu cầu bản cụ thể, và phiên bản này đã được đối chiếu bản ổn định GA trên trang chính thức https://spring.io/projects/spring-boot.
 
 ### 2.9. Tái cấu trúc `docs/field-names.md` thành hai bảng (A & B) và kiểm thử đồng bộ 100%
 - **Vấn đề trước đây:** Tài liệu liệt kê chung, có một số khóa sai lệch lịch sử (`duration_seconds`, `dependencies`, `visual_cue`).
@@ -97,27 +97,34 @@ Kế hoạch mô tả bằng tiếng Việt, dự án đã chuẩn hóa sang enu
 - **Thực tế triển khai trong T03:**
   - Tuân thủ quy tắc R1: **Chỉ làm khung và script kiểm tra, tuyệt đối KHÔNG tạo nội dung dữ liệu thật.** Toàn bộ các file `data/ingredients.json`, `data/equipment.json`, `data/storage_rules.json`, `data/safety_rules.json` và thư mục `data/recipes/` để rỗng hợp lệ (mảng `[]`).
   - **Không tạo `prices.json`:** Giá tham khảo được lưu trực tiếp trong trường `ingredient.reference_price` theo đúng bảng CSDL của `plan.md` dòng 175.
-  - **Đề xuất thực thể `equipment`:** Kế hoạch chưa có schema cho `equipment`; đã đề xuất các trường `id`, `name`, `source`, `confirmed_by`, `missing_fields` tại mục 12 của `docs/field-names.md` dưới dạng "THÊM, kế hoạch không có" và chờ duyệt trước khi đưa vào mã nguồn.
-  - Xây dựng công cụ kiểm định toàn diện `scripts/validate-data.js` (chạy bằng `pnpm validate-data`), hỗ trợ chế độ nghiêm ngặt `--strict` và chế độ báo cáo `--report-missing` (gom theo tệp, trường và nguồn cần tìm).
+  - **Thực thể `equipment` đã duyệt:** Các trường `id`, `name`, `source`, `confirmed_by`, `missing_fields` đã được chủ dự án chính thức phê duyệt và đưa vào schema Zod (`packages/core/src/schemas/equipment.ts`) cũng như tài liệu `docs/field-names.md` (mục 12).
+  - Xây dựng công cụ kiểm định toàn diện `scripts/validate-data.js` (chạy bằng `pnpm validate-data`), hỗ trợ chế độ nghiêm ngặt `--strict` và chế độ báo cáo `--report-missing` (gom theo tệp, trường và nguồn cần tìm; đã khử trùng lặp dòng `allergen_codes`).
+
+### 2.13. Bộ xếp lịch nấu ăn T04 (Scheduler)
+- **Kế hoạch:** Mục "Thuật toán" phần 1 "Xếp lịch nấu" ([`docs/plan.md:L250-L271`](plan.md#L250-L271)).
+- **Tài liệu kỳ vọng tính tay:** [`docs/expected/T04.md`](expected/T04.md) do chủ dự án và Claude tính tay trước khi code.
+- **Thực tế triển khai:**
+  - Mô-đun `packages/core/src/scheduler/`:
+    + `tail.ts`: Xác thực cấu trúc đồ thị (bắt lỗi chu trình `CYCLE` và phụ thuộc lạ `UNKNOWN_DEPENDENCY`); tính `tail(s)` bằng quy hoạch động có nhớ.
+    + `plan.ts`: Mô phỏng theo trục thời gian thực tế, hỗ trợ 2 chế độ `fastest` (ưu tiên bước có tail lớn nhất) và `fewest_tools` (ưu tiên bước dùng chung dụng cụ với bước active vừa làm xong). Trả về chuẩn `snake_case`: `{ step_id, start_at, end_at, reason }`.
+    + `replan.ts`: Tính lại lịch trình cho các bước chưa chạy khi người dùng bấm Xong sớm hoặc muộn; giữ nguyên tuyệt đối `endsAt` của các bước passive đang chạy nền.
+    + `manual-check.ts`: Hàm `checkManualStart()` chặn (`blocked`) khi bước có `safety_rule` chưa xác nhận, cảnh báo (`warn`) khi bước phụ thuộc `after` chưa xong, và cho phép (`ok`) khi thỏa mãn.
+  - T04.8: Tạo [`docs/limitations.md`](limitations.md) ghi nhận giới hạn: thời lượng bước không đổi khi đổi số phần ăn trong phiên bản MVP.
+  - Bộ kiểm định băm toàn vẹn: Tích hợp kiểm thử đối chiếu mã băm SHA-256 (`89f77ecc4fa5bd7e104315638572d06c3dbb8f3b61c077ecd007526addae2ca7`) của `docs/expected/T04.md`, chứng minh nhạy cảm với việc sửa nội dung và trơ với khoảng trắng cuối file.
 
 ---
 
-## 3. Trạng thái hiện tại của hệ thống (Tính đến hết T03)
+## 3. Trạng thái hiện tại của hệ thống (Tính đến hết T04)
 
-- **Test Suite (`packages/core`):** 105 ca kiểm thử tự động pass 100%.
-  - Bộ test đồng bộ 100% giữa `docs/field-names.md` và 10 Zod schemas (kèm test chứng minh fail đỏ khi làm lệch khóa hoặc sai dòng).
-  - Bộ test cho quy tắc R2 và R3 trên `RecipeSchema` (3 ca hợp lệ, 3 ca sai).
-  - Bộ test an toàn dị ứng trên `IngredientSchema` (3 ca hợp lệ, 3 ca sai, test logic cảnh báo khi null).
-  - Khối JSON món "Trứng chiên cà chua" đọc trực tiếp từ `docs/plan.md`.
-  - 15 ca sai bắt buộc của công thức và đầy đủ ca kiểm thử cho toàn bộ 10 thực thể.
-  - Toàn bộ ca kiểm thử cho script `validate-data` trên các dữ liệu mẫu synthetic trong `fixtures/`.
-- **Dữ liệu & Script kiểm định (T03):**
-  - `pnpm validate-data` trên thư mục `data/` rỗng: HỢP LỆ, sạch sẽ 100% (mã thoát 0).
-  - `pnpm validate-data --strict` trên `data/` rỗng: HỢP LỆ (mã thoát 0).
-  - `pnpm validate-data --report-missing`: In bảng danh sách việc cần biên tập chi tiết.
+- **Test Suite (`packages/core`):** 129 ca kiểm thử tự động pass 100% trên cả 4 file test.
+  - 21 ca kiểm thử Scheduler (T04), bao gồm 18 ca kiểm thử thuật toán khớp 100% với các khối JSON tính tay trong `docs/expected/T04.md` (Ca A, B, C, D, E, F, G, H, T04.8) và 3 ca kiểm thử toàn vẹn băm SHA-256 bản gốc của chủ dự án.
+  - 15 ca kiểm định dữ liệu và cờ `--strict`, `--report-missing` (T03).
+  - 91 ca kiểm thử schema Zod (11 thực thể bao gồm cả thực thể `equipment` đã duyệt), đồng bộ tài liệu `docs/field-names.md`, quy tắc R2/R3, an toàn dị ứng, quy đổi đơn vị (T02).
+  - 2 ca kiểm thử liên kết hệ thống (T01).
 - **Kiểm tra tĩnh & Mã nguồn:**
   - `build` thành công, sạch sẽ (`tsc --project tsconfig.build.json`).
   - `typecheck` không có lỗi trên toàn bộ workspace.
-  - `eslint` không có cảnh báo/lỗi.
-  - `scan-secrets.py` quét toàn bộ lịch sử 13 commits: sạch 100%, không lọt khóa/token/file nhạy cảm.
-- **Tiến độ tổng thể:** Đã đóng hoàn tất T01, T02, T02-FIX và T03. **Tuyệt đối chưa làm T04.**
+  - `eslint` sạch sẽ 100%, 0 lỗi, 0 cảnh báo.
+  - `pnpm validate-data` và `pnpm validate-data --strict` sạch sẽ trên thư mục `data/` rỗng.
+  - `scan-secrets.py` quét toàn bộ lịch sử: sạch 100%.
+- **Tiến độ tổng thể:** Đã đóng hoàn tất T01, T02, T03 và T04. **Tuyệt đối chưa làm T05.**

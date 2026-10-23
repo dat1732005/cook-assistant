@@ -25,6 +25,8 @@ import {
   SafetyRuleSchema,
   StorageRule,
   StorageRuleSchema,
+  Equipment,
+  EquipmentSchema,
 } from '../schemas/index.js';
 
 /**
@@ -192,5 +194,23 @@ export function validateStorageRule(data: unknown): ValidationResult<StorageRule
  */
 export function parseStorageRule(data: unknown): StorageRule {
   return StorageRuleSchema.parse(data);
+}
+
+/**
+ * Kiểm định dụng cụ nấu ăn (Equipment).
+ */
+export function validateEquipment(data: unknown): ValidationResult<Equipment> {
+  const result = EquipmentSchema.safeParse(data);
+  if (result.success) {
+    return { success: true, data: result.data };
+  }
+  return { success: false, errors: formatZodErrors(result.error) };
+}
+
+/**
+ * Phân tích dữ liệu thành Equipment (ném ngoại lệ nếu sai).
+ */
+export function parseEquipment(data: unknown): Equipment {
+  return EquipmentSchema.parse(data);
 }
 

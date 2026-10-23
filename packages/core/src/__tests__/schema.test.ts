@@ -27,12 +27,14 @@ import {
   UserProfileSchema,
   StorageRuleSchema,
   SafetyRuleSchema,
+  EquipmentSchema,
 } from '../schemas/index.js';
 import {
   validateRecipe,
   validateIngredient,
   validatePantryItem,
   validatePantryEvent,
+  validateEquipment,
   validateCookSession,
   validateUserProfile,
   validateStorageRule,
@@ -224,7 +226,7 @@ function parseFieldNamesDetailedTables(): {
 describe('T02: Kiểm tra đồng bộ 100% giữa docs/field-names.md và Zod Schemas', () => {
   const docEntities = parseFieldNamesDoc();
 
-  // Danh sách schema ánh xạ tương ứng với 10 thực thể trong docs/field-names.md
+  // Danh sách schema ánh xạ tương ứng với 11 thực thể trong docs/field-names.md
   const schemaMap: Record<string, Record<string, unknown>> = {
     recipe: RecipeSchema.shape,
     recipe_ingredient: RecipeIngredientSchema.shape,
@@ -236,9 +238,10 @@ describe('T02: Kiểm tra đồng bộ 100% giữa docs/field-names.md và Zod S
     user_profile: UserProfileSchema.shape,
     storage_rule: StorageRuleSchema.shape,
     safety_rule: SafetyRuleSchema.shape,
+    equipment: EquipmentSchema.shape,
   };
 
-  it('Tất cả 10 thực thể đều có mặt trong docs/field-names.md', () => {
+  it('Tất cả 11 thực thể đều có mặt trong docs/field-names.md', () => {
     expect(Object.keys(schemaMap).sort()).toEqual(Object.keys(docEntities).sort());
   });
 
@@ -1167,6 +1170,29 @@ describe('T02: Kiểm tra thực thể SafetyRule (quy tắc an toàn theo docs/
       description: 'Mô tả',
     };
     const result = validateSafetyRule(invalid);
+    expect(result.success).toBe(false);
+  });
+});
+
+describe('T02: Kiểm tra thực thể Equipment (được duyệt, R2/R3)', () => {
+  it('Ca hợp lệ: Dụng cụ nấu ăn hợp lệ có đầy đủ trường R2/R3', () => {
+    const valid = {
+      id: 'chao_chong_dinh',
+      name: 'Chảo chống dính',
+      source: 'Quy chuẩn dụng cụ nấu bếp',
+      confirmed_by: 'Chuyên gia thiết bị bếp',
+      missing_fields: [],
+    };
+    const result = validateEquipment(valid);
+    expect(result.success).toBe(true);
+  });
+
+  it('Ca sai: Bắt lỗi khi id hoặc name để trống', () => {
+    const invalid = {
+      id: '',
+      name: '',
+    };
+    const result = validateEquipment(invalid);
     expect(result.success).toBe(false);
   });
 });
