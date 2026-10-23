@@ -19,6 +19,7 @@
     "validate-data": "node scripts/validate-data.js",
     "scheduler-demo": "node scripts/scheduler-demo.js",
     "bundle-data": "node scripts/bundle-data.js",
+    "verify": "node scripts/verify.js",
     "backend:test": "cd apps/backend && mvnw test",
     "backend:build": "cd apps/backend && mvnw package -DskipTests",
     "backend:start": "java -jar apps/backend/target/backend-0.1.0-SNAPSHOT.jar",
