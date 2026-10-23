@@ -241,17 +241,16 @@ Tài liệu này ghi nhận mọi tên trường và giá trị liệt kê (enum
 
 ---
 
-## 12. Thực thể đề xuất: `equipment` (Dụng cụ nấu ăn - Đang chờ duyệt)
-*(Kế hoạch chưa có schema cho equipment; đề xuất các trường sau vào docs/field-names.md và chờ duyệt trước khi đưa vào mã nguồn)*
+## 12. Thực thể `equipment` (Dụng cụ nấu ăn)
 
 ### Bảng A: Khóa nguyên văn từ docs/plan.md
-*(Không có bảng CSDL equipment trong docs/plan.md)*
+*(Không có bảng CSDL equipment trong docs/plan.md; danh sách dụng cụ chỉ xuất hiện trong mảng `equipment` của công thức).*
 
-### Bảng B: Tên do dự án đặt và đề xuất (Chờ duyệt)
+### Bảng B: Tên do dự án đặt và đã được chủ dự án chính thức phê duyệt
 | Khóa schema | Mô tả tiếng Việt trong docs/plan.md / Quy tắc | Dòng plan.md | Kiểu dữ liệu / Quy ước |
 | --- | --- | --- | --- |
-| `id` | THÊM, kế hoạch không có: định danh dụng cụ (slug khớp với danh sách equipment trong recipe) | — | `string` |
-| `name` | THÊM, kế hoạch không có: tên hiển thị tiếng Việt của dụng cụ | — | `string` |
+| `id` | THÊM, kế hoạch không có: định danh dụng cụ (slug khớp với danh sách equipment trong recipe) | — | `string` (min 1) |
+| `name` | THÊM, kế hoạch không có: tên hiển thị tiếng Việt của dụng cụ | — | `string` (min 1) |
 | `source` | THÊM, kế hoạch không có: nguồn trích dẫn dữ liệu theo R3 | — | `string` (optional) |
 | `confirmed_by` | THÊM, kế hoạch không có: người xác nhận dữ liệu theo R3 | — | `string` (optional) |
 | `missing_fields` | THÊM, kế hoạch không có: danh sách trường còn thiếu theo R2 | — | `string[]` (default []) |

@@ -63,11 +63,11 @@ Kế hoạch mô tả bằng tiếng Việt, dự án đã chuẩn hóa sang enu
 
 ### 2.7. Xử lý đơn vị `chén` theo quy tắc R2 (`MISSING`)
 - **Kế hoạch (dòng 358):** Mọi lượng quy về đơn vị gốc (`g`, `ml`, `cái`).
-- **Thực tế triển khai:** Đơn vị đời thường `thìa cà phê` (5 ml), `thìa canh` (15 ml) có quy chuẩn thể tích rõ ràng. Riêng đơn vị `chén` thay đổi rất lớn tùy theo vùng miền/loại chén (chén cơm ~180-200ml, cup phương Tây ~240-250ml) và chưa có nguồn y tế chính thức xác nhận. Theo quy tắc R2 (`docs/tasks.md`), hệ thống đánh dấu quy đổi đơn vị `chén` là `MISSING` và ném lỗi rõ ràng thay vì tự đoán số.
+- **Thực tế triển khai:** Đơn vị đời thường `thìa cà phê` (5 ml), `thìa canh` (15 ml) được giữ lại nhưng chú thích rõ "quy ước tạm, chờ xác nhận". Riêng đơn vị `chén` chưa có quy chuẩn thể tích chính thức và chưa có nguồn y tế xác nhận, nên tuyệt đối không điền bất kỳ con số nào. Theo quy tắc R2 (`docs/tasks.md`), hệ thống đánh dấu quy đổi đơn vị `chén` là `MISSING` và ném lỗi rõ ràng thay vì tự đoán số.
 
 ### 2.8. Nâng cấp phiên bản hạ tầng Backend
 - **Kế hoạch ban đầu:** Dự kiến Spring Boot 3.x.
-- **Thực tế triển khai:** Nâng cấp cấu hình Maven Wrapper sử dụng Spring Boot `4.1.0` (kèm Java 21 LTS) theo chỉ đạo kỹ thuật để đón đầu chu kỳ hỗ trợ dài hạn.
+- **Thực tế triển khai:** Nâng cấp cấu hình Maven Wrapper sử dụng Spring Boot `4.1.0` (kèm Java 21 LTS) theo yêu cầu trực tiếp của chủ dự án và đã đối chiếu bản ổn định GA trên trang chính thức https://spring.io/projects/spring-boot.
 
 ### 2.9. Tái cấu trúc `docs/field-names.md` thành hai bảng (A & B) và kiểm thử đồng bộ 100%
 - **Vấn đề trước đây:** Tài liệu liệt kê chung, có một số khóa sai lệch lịch sử (`duration_seconds`, `dependencies`, `visual_cue`).
