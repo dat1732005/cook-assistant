@@ -32,8 +32,8 @@ export const UserProfileSchema = z.object({
     .int()
     .positive('Số người ăn mặc định phải lớn hơn hoặc bằng 1')
     .default(2),
-  // Danh sách các mã dị ứng của người dùng (theo 8 mã dị ứng chuẩn của kế hoạch)
-  allergies: z.array(AllergenCodeEnum).default([]),
+  // Danh sách các mã dị ứng của người dùng: AllergenCode[] | null (null là chưa khai, [] là đã khai không có)
+  allergies: z.array(AllergenCodeEnum).nullable().default(null),
   // Chế độ ăn uống riêng (ví dụ: "chay", "eat_clean", "binh_thuong")
   dietary_preference: z.string().optional(),
   // Danh sách ingredient_id của các gia vị cơ bản đang có trong nhà (muối, tiêu, đường...)

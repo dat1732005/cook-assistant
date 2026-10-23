@@ -180,7 +180,7 @@ Tài liệu này ghi nhận mọi tên trường và giá trị liệt kê (enum
 | --- | --- | --- | --- |
 | `display_name` | tên hiển thị | 174 | `string` (optional) |
 | `servings` | số người ăn | 174 | `number` (int, >= 1, default 2) |
-| `allergies` | dị ứng | 174 | `AllergenCode[]` (default []) |
+| `allergies` | THÊM, kế hoạch chỉ ghi danh sách mã: cho phép null khi chưa khai, [] khi đã khai không có dị ứng | — | `AllergenCode[] \| null` (default null) |
 | `dietary_preference` | chế độ ăn | 174 | `string` (optional) |
 | `essential_spices` | gia vị cơ bản đang có | 174 | `string[]` (default []) |
 | `available_equipment` | dụng cụ đang có | 174 | `string[]` (default []) |

@@ -45,6 +45,7 @@ export const STRINGS = {
     saveButton: 'Lưu & Khám phá món ăn',
     saveChangesButton: 'Lưu thay đổi',
     validationErrorServings: 'Số người ăn phải là số nguyên dương lớn hơn hoặc bằng 1.',
+    validationErrorAllergies: 'Vui lòng chọn dị ứng thực phẩm hoặc chọn "Tôi không bị dị ứng thực phẩm nào" để tiếp tục.',
   },
 
   // Danh mục mã dị ứng chuẩn hiển thị tiếng Việt

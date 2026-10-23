@@ -82,6 +82,9 @@ interface RawRecipeRow {
   description?: string | null;
 }
 
+/** Mã trạng thái trả về khi chưa khai báo dị ứng */
+export const ALLERGIES_NOT_DECLARED = 'ALLERGIES_NOT_DECLARED';
+
 /**
  * Lớp truy cập dữ liệu công thức món ăn (Mục T05.5).
  */
@@ -92,7 +95,7 @@ export class RecipeRepo {
    * Lấy danh sách món ăn đã lọc theo các tiêu chí (dị ứng, thời gian, dụng cụ).
    * Kết quả sắp xếp theo slug tăng dần (mục D trong docs/expected/T05.md).
    */
-  async list(filters?: RecipeFilterOptions): Promise<RecipeSummary[]> {
+  async list(filters?: RecipeFilterOptions): Promise<RecipeSummary[] & { code?: string }> {
     const effectiveAllergies =
       filters?.allergies !== undefined ? filters.allergies : filters?.userAllergies;
     const effectiveEquipment =
@@ -102,9 +105,11 @@ export class RecipeRepo {
     const effectiveMaxMinutes =
       filters?.max_minutes !== undefined ? filters.max_minutes : filters?.maxMinutes;
 
-    // Trường hợp chưa khai dị ứng: trả về rỗng (D1e - an toàn sức khỏe người dùng)
+    // Trường hợp chưa khai dị ứng: trả về danh sách rỗng kèm mã ALLERGIES_NOT_DECLARED (D1e - an toàn sức khỏe người dùng)
     if (filters && effectiveAllergies === null) {
-      return [];
+      const emptyResult: RecipeSummary[] & { code?: string } = [];
+      emptyResult.code = ALLERGIES_NOT_DECLARED;
+      return emptyResult;
     }
 
     // 1. Lấy tất cả các món hiện có trong CSDL sắp theo slug ASC
@@ -156,12 +161,20 @@ export class RecipeRepo {
     const results: RecipeSummary[] = [];
 
     for (const r of rows) {
-      // 3.1 Bộ lọc thời gian (D2): total_minutes <= maxMinutes
-      if (
-        effectiveMaxMinutes !== undefined &&
-        r.total_minutes > effectiveMaxMinutes
-      ) {
-        continue;
+      // 3.1 Bộ lọc thời gian (D2): total_minutes <= maxMinutes; loại món thiếu total_minutes
+      if (effectiveMaxMinutes !== undefined) {
+        // Loại món thiếu total_minutes (null, undefined hoặc <= 0)
+        if (
+          r.total_minutes === null ||
+          r.total_minutes === undefined ||
+          r.total_minutes <= 0
+        ) {
+          continue;
+        }
+        // Loại món có thời gian vượt quá ngưỡng lọc
+        if (r.total_minutes > effectiveMaxMinutes) {
+          continue;
+        }
       }
 
       // 3.2 Bộ lọc dụng cụ (D3): người dùng cần có MỌI dụng cụ mà món yêu cầu

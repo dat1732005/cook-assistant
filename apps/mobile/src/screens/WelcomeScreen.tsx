@@ -61,14 +61,16 @@ export function WelcomeScreen({
   // Khởi tạo trạng thái số người ăn (mặc định 2 hoặc theo hồ sơ đã có)
   const [servings, setServings] = useState<number>(initialProfile?.servings ?? 2);
 
-  // Khởi tạo danh sách dị ứng đã chọn
-  const [allergies, setAllergies] = useState<AllergenCode[]>(
-    initialProfile?.allergies ?? []
+  // Khởi tạo danh sách dị ứng đã chọn: AllergenCode[] | null (null là chưa khai báo)
+  const [allergies, setAllergies] = useState<AllergenCode[] | null>(
+    initialProfile?.allergies ?? null
   );
 
   // Trạng thái xác nhận rõ ràng "không bị dị ứng nào" (A3)
   const [noAllergies, setNoAllergies] = useState<boolean>(
-    initialProfile ? initialProfile.allergies.length === 0 : false
+    initialProfile && initialProfile.allergies !== null
+      ? initialProfile.allergies.length === 0
+      : false
   );
 
   // Khởi tạo danh sách gia vị đang có
@@ -103,11 +105,12 @@ export function WelcomeScreen({
   const handleToggleAllergen = useCallback((code: AllergenCode) => {
     setNoAllergies(false);
     setAllergies((prev) => {
+      const currentList = prev ?? [];
       // Nếu đã có thì bỏ chọn, chưa có thì thêm vào
-      if (prev.includes(code)) {
-        return prev.filter((c) => c !== code);
+      if (currentList.includes(code)) {
+        return currentList.filter((c) => c !== code);
       }
-      return [...prev, code];
+      return [...currentList, code];
     });
   }, []);
 
@@ -147,6 +150,16 @@ export function WelcomeScreen({
       return;
     }
 
+    // Bắt buộc chọn rõ dị ứng trước khi vào: phải chọn ít nhất một mã dị ứng hoặc chọn "Không có dị ứng"
+    if (allergies === null && !noAllergies) {
+      Alert.alert(STRINGS.common.error, STRINGS.welcome.validationErrorAllergies);
+      return;
+    }
+    if (Array.isArray(allergies) && allergies.length === 0 && !noAllergies) {
+      Alert.alert(STRINGS.common.error, STRINGS.welcome.validationErrorAllergies);
+      return;
+    }
+
     try {
       setSaving(true);
       // Gọi UserProfileRepo lưu thật vào bảng SQLite (tuyệt đối không chỉ giữ trên RAM)
@@ -164,7 +177,7 @@ export function WelcomeScreen({
     } finally {
       setSaving(false);
     }
-  }, [servings, allergies, spices, equipment, profileRepo, onProfileSaved]);
+  }, [servings, allergies, noAllergies, spices, equipment, profileRepo, onProfileSaved]);
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -258,7 +271,7 @@ export function WelcomeScreen({
           {/* Lưới danh mục 8 mã dị ứng chuẩn y tế */}
           <View style={styles.chipGrid}>
             {ALLERGEN_CODES.map((code) => {
-              const isSelected = allergies.includes(code);
+              const isSelected = allergies ? allergies.includes(code) : false;
               return (
                 <TouchableOpacity
                   key={code}

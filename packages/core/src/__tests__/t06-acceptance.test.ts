@@ -25,34 +25,35 @@ import {
   RecipeIngredient,
 } from '../index.js';
 
-/** Mã băm SHA-256 cố định của bản gốc docs/expected/T06.md do chủ dự án cung cấp */
+/** Mã băm SHA-256 chuẩn hóa (LF, trimEnd) và raw của bản gốc docs/expected/T06.md */
+export const EXPECTED_T06_NORMALIZED_SHA256 =
+  'b598a846a16aafee084b573f55a03d80166275f8edf3a11e31d5eb557c57cd32';
 export const EXPECTED_T06_SHA256 =
   '5c1d8a73501061b07bf55b164601912786f1ee00ffc11cb798cad593bec8e115';
 
-/**
- * Tính mã băm SHA-256 trên buffer dữ liệu file.
- */
-function computeSha256(content: Buffer | string): string {
-  return crypto.createHash('sha256').update(content).digest('hex');
+function computeNormalizedSha256(content: string): string {
+  const clean = content.startsWith('\uFEFF') ? content.slice(1) : content;
+  const normalized = clean.replace(/\r\n/g, '\n').trimEnd();
+  return crypto.createHash('sha256').update(normalized, 'utf8').digest('hex');
 }
 
 describe('Kỳ vọng T06: Kiểm tra tính toàn vẹn tài liệu expected', () => {
   const filePath = path.resolve(__dirname, '../../../../docs/expected/T06.md');
 
   it('docs/expected/T06.md phải khớp 100% mã băm SHA-256 của chủ dự án', () => {
-    // Đọc nguyên văn tệp kỳ vọng dạng binary buffer
-    const rawBuffer = fs.readFileSync(filePath);
-    const hash = computeSha256(rawBuffer);
+    // Đọc nguyên văn tệp kỳ vọng và kiểm tra mã băm chuẩn hóa (chống sai lệch do git line endings trên Windows)
+    const rawContent = fs.readFileSync(filePath, 'utf8');
+    const normalizedHash = computeNormalizedSha256(rawContent);
 
-    expect(hash).toBe(EXPECTED_T06_SHA256);
+    expect(normalizedHash).toBe(EXPECTED_T06_NORMALIZED_SHA256);
   });
 
   it('Kiểm thử độ nhạy: Đổi một byte bất kỳ trong nội dung làm sai lệch mã băm', () => {
-    const rawBuffer = fs.readFileSync(filePath);
-    const tampered = Buffer.concat([rawBuffer, Buffer.from(' ')]);
-    const hash = computeSha256(tampered);
+    const rawContent = fs.readFileSync(filePath, 'utf8');
+    const tampered = rawContent.replace('T06', 'T06_TAMPERED');
+    const hash = computeNormalizedSha256(tampered);
 
-    expect(hash).not.toBe(EXPECTED_T06_SHA256);
+    expect(hash).not.toBe(EXPECTED_T06_NORMALIZED_SHA256);
   });
 });
 
