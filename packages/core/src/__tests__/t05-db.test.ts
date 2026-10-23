@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import os from 'node:os';
 import { describe, expect, it, beforeAll, afterAll } from 'vitest';
 import { NodeSqliteDriver } from '../db/node-driver.js';
 import { MigrationRunner } from '../db/migration-runner.js';
@@ -284,6 +285,7 @@ describe('T05: SQLite, Migrations, Data Bundling, Versioning & RecipeRepo', () =
           {
             allowDraft: false,
             logger: (msg) => {
+              console.log(msg);
               logOutput += msg;
             },
           }
@@ -382,6 +384,7 @@ describe('T05: SQLite, Migrations, Data Bundling, Versioning & RecipeRepo', () =
           { data_version: 1, recipes: [] },
           {
             logger: (msg) => {
+              console.log(msg);
               logOutput += msg;
             },
           }
@@ -398,45 +401,125 @@ describe('T05: SQLite, Migrations, Data Bundling, Versioning & RecipeRepo', () =
       }
     });
 
-    it('B6: bundle-data khi thư mục đầu vào có tệp synthetic: true -> Thoát mã khác 0, in tệp vi phạm, không chép vào target', () => {
-      // Gọi bundle-data với nguồn là thư mục chứa fixtures (có synthetic: true)
-      const res = runBundle({
-        source: path.resolve(import.meta.dirname, '../../../../fixtures/t05'),
-        target: path.resolve(import.meta.dirname, '../../../../apps/mobile/assets/data/test_target_b6'),
-      });
+    it('B6: bundle-data khi thư mục đầu vào có đúng một tệp synthetic: true ngoài fixtures/ -> Thoát mã khác 0, in tệp vi phạm, không chép vào target', () => {
+      const tempSource = fs.mkdtempSync(path.join(os.tmpdir(), 'cook-test-b6-src-'));
+      const tempTarget = fs.mkdtempSync(path.join(os.tmpdir(), 'cook-test-b6-dst-'));
 
-      expect(res.success).toBe(false);
-      expect(res.code).not.toBe(0);
-      expect(['synthetic-file-detected', 'fixtures-source-forbidden']).toContain(res.error);
+      try {
+        // Tạo đúng một tệp có synthetic: true ngoài fixtures/
+        const synFile = path.join(tempSource, 'synthetic-recipe.json');
+        fs.writeFileSync(
+          synFile,
+          JSON.stringify({
+            slug: 'synthetic-mon-test',
+            name: 'Món giả lập',
+            synthetic: true,
+            status: 'published',
+            steps: [{ id: 's1', seconds: 30, text: 'step 1' }],
+          }),
+          'utf-8'
+        );
+
+        const res = runBundle({
+          source: tempSource,
+          target: tempTarget,
+        });
+
+        expect(res.success).toBe(false);
+        expect(res.code).not.toBe(0);
+        expect(res.error).toBe('synthetic-file-detected');
+        expect(res.offendingFile).toContain('synthetic-recipe.json');
+
+        // Đảm bảo không chép tệp đó vào thư mục target
+        const copiedFiles = fs.readdirSync(tempTarget);
+        expect(copiedFiles.length).toBe(0);
+      } finally {
+        fs.rmSync(tempSource, { recursive: true, force: true });
+        fs.rmSync(tempTarget, { recursive: true, force: true });
+      }
     });
 
     it('B7: bundle-data bản production khi cờ dev bật -> Build thất bại, in lý do rõ ràng', () => {
-      const res = runBundle({
-        source: path.resolve(import.meta.dirname, '../../../../data'),
-        isProduction: true,
-        isDev: true,
-      });
+      const tempTarget = fs.mkdtempSync(path.join(os.tmpdir(), 'cook-test-b7-dst-'));
+      try {
+        const res = runBundle({
+          source: path.resolve(import.meta.dirname, '../../../../data'),
+          target: tempTarget,
+          isProduction: true,
+          isDev: true,
+        });
 
-      expect(res.success).toBe(false);
-      expect(res.code).toBe(1);
-      expect(res.error).toBe('production-dev-conflict');
+        expect(res.success).toBe(false);
+        expect(res.code).toBe(1);
+        expect(res.error).toBe('production-dev-conflict');
+      } finally {
+        fs.rmSync(tempTarget, { recursive: true, force: true });
+      }
     });
 
-    it('B8: bundle-data với dữ liệu thật hợp lệ -> Chỉ đóng gói published/reviewed, không có tệp từ fixtures/', () => {
-      const targetDir = path.resolve(import.meta.dirname, '../../../../apps/mobile/assets/data');
-      const res = runBundle({
-        source: path.resolve(import.meta.dirname, '../../../../data'),
-        target: targetDir,
-        isDev: false,
-        isProduction: false,
-      });
+    it('B8: bundle-data với thư mục tạm có 3 món (published, reviewed, draft) -> Chứng minh chỉ 2 món được đóng gói, không có fixtures/', () => {
+      const tempSource = fs.mkdtempSync(path.join(os.tmpdir(), 'cook-test-b8-src-'));
+      const tempTarget = fs.mkdtempSync(path.join(os.tmpdir(), 'cook-test-b8-dst-'));
 
-      expect(res.success).toBe(true);
-      expect(res.code).toBe(0);
+      try {
+        // Tạo 3 món: published, reviewed, draft trong thư mục tạm
+        fs.writeFileSync(
+          path.join(tempSource, 'recipe-published.json'),
+          JSON.stringify({
+            slug: 'mon-published',
+            name: 'Món đã xuất bản',
+            status: 'published',
+            steps: [{ id: 's1', seconds: 60, text: 'step 1' }],
+          }),
+          'utf-8'
+        );
+        fs.writeFileSync(
+          path.join(tempSource, 'recipe-reviewed.json'),
+          JSON.stringify({
+            slug: 'mon-reviewed',
+            name: 'Món đã kiểm duyệt',
+            status: 'reviewed',
+            steps: [{ id: 's1', seconds: 60, text: 'step 1' }],
+          }),
+          'utf-8'
+        );
+        fs.writeFileSync(
+          path.join(tempSource, 'recipe-draft.json'),
+          JSON.stringify({
+            slug: 'mon-draft',
+            name: 'Món nháp',
+            status: 'draft',
+            steps: [{ id: 's1', seconds: 60, text: 'step 1' }],
+          }),
+          'utf-8'
+        );
 
-      // Kiểm tra trong thư mục đích không có tệp nào chứa synthetic: true
-      const manifestPath = path.resolve(targetDir, 'bundle-manifest.json');
-      expect(fs.existsSync(manifestPath)).toBe(true);
+        const res = runBundle({
+          source: tempSource,
+          target: tempTarget,
+          isDev: false,
+          isProduction: false,
+        });
+
+        expect(res.success).toBe(true);
+        expect(res.code).toBe(0);
+        expect(res.recipeCount).toBe(2);
+
+        // Chứng minh chỉ đúng 2 món được đóng gói, món draft không có
+        const filesInTarget = fs.readdirSync(tempTarget);
+        expect(filesInTarget).toContain('recipe-published.json');
+        expect(filesInTarget).toContain('recipe-reviewed.json');
+        expect(filesInTarget).not.toContain('recipe-draft.json');
+
+        const manifest = JSON.parse(
+          fs.readFileSync(path.join(tempTarget, 'bundle-manifest.json'), 'utf-8')
+        );
+        expect(manifest.recipe_count).toBe(2);
+        expect(manifest.recipes.sort()).toEqual(['mon-published', 'mon-reviewed']);
+      } finally {
+        fs.rmSync(tempSource, { recursive: true, force: true });
+        fs.rmSync(tempTarget, { recursive: true, force: true });
+      }
     });
   });
 

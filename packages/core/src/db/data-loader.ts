@@ -167,7 +167,7 @@ export async function loadDataBundle(
 
     // Nếu data_version không tăng (bằng hoặc nhỏ hơn), bỏ qua nạp (B2, E4)
     if (!Number.isNaN(currentNum) && !Number.isNaN(bundleNum) && bundleNum <= currentNum) {
-      log('bỏ qua nạp: phiên bản dữ liệu hiện tại (' + currentVersionStr + ') đã mới nhất');
+      log(`bỏ qua nạp: cùng data_version = ${currentVersionStr}`);
       return {
         status: 'skipped',
         reason: 'up-to-date',
