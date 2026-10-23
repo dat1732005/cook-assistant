@@ -5,5 +5,14 @@ export default defineConfig({
     globals: true,
     environment: 'node',
     include: ['src/**/__tests__/**/*.test.ts', 'src/**/*.test.ts'],
+    poolOptions: {
+      forks: {
+        execArgv: ['--disable-warning=ExperimentalWarning'],
+      },
+      threads: {
+        execArgv: ['--disable-warning=ExperimentalWarning'],
+      },
+    },
   },
 });
+

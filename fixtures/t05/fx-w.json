@@ -1,0 +1,36 @@
+{
+  "slug": "fx-w",
+  "name": "Món giả W",
+  "servings_base": 2,
+  "total_minutes": 15,
+  "difficulty": 1,
+  "equipment": ["chao"],
+  "tags": ["nhap", "mon-gia"],
+  "status": "draft",
+  "version": 1,
+  "source": "synthetic-test",
+  "confirmed_by": "tester",
+  "missing_fields": [],
+  "synthetic": true,
+  "ingredients": [
+    {
+      "ingredient": "fx-ing-egg",
+      "qty": 50,
+      "unit": "g",
+      "role": "flavor",
+      "flavor_group": "none",
+      "optional": false
+    }
+  ],
+  "steps": [
+    {
+      "id": "s1",
+      "title": "Nấu món W",
+      "kind": "active",
+      "seconds": 900,
+      "after": [],
+      "resources": ["chao"],
+      "text": "Nấu trong 15 phút"
+    }
+  ]
+}

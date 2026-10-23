@@ -14,3 +14,4 @@ export * from './recipe.js';
 export * from './pantry.js';
 export * from './session.js';
 export * from './profile.js';
+export * from './ai-usage-log.js';

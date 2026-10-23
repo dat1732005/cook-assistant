@@ -1,0 +1,47 @@
+[
+  {
+    "id": "fx-ing-egg-peanut",
+    "name": "Nguyên liệu trứng và đậu phộng",
+    "aliases": [],
+    "group": "protein",
+    "base_unit": "g",
+    "conversions": {},
+    "allergen_codes": ["egg", "peanut"],
+    "reference_price": 50000,
+    "synthetic": true
+  },
+  {
+    "id": "fx-ing-egg",
+    "name": "Nguyên liệu trứng",
+    "aliases": [],
+    "group": "protein",
+    "base_unit": "g",
+    "conversions": {},
+    "allergen_codes": ["egg"],
+    "reference_price": 30000,
+    "synthetic": true
+  },
+  {
+    "id": "fx-ing-peanut",
+    "name": "Nguyên liệu đậu phộng",
+    "aliases": [],
+    "group": "hat",
+    "base_unit": "g",
+    "conversions": {},
+    "allergen_codes": ["peanut"],
+    "reference_price": 40000,
+    "synthetic": true
+  },
+  {
+    "id": "fx-ing-unknown",
+    "name": "Nguyên liệu chưa rõ dị ứng",
+    "aliases": [],
+    "group": "khac",
+    "base_unit": "g",
+    "conversions": {},
+    "allergen_codes": null,
+    "reference_price": 20000,
+    "missing_fields": ["allergen_codes"],
+    "synthetic": true
+  }
+]
