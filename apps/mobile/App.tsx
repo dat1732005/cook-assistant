@@ -176,9 +176,9 @@ export default function App({ driverOverride }: AppProps): React.JSX.Element {
     );
   }
 
-  // Tuyến điều hướng khởi đầu: Chào mừng nếu chưa có hồ sơ, Trang chủ nếu đã có hồ sơ (D1, D2)
+  // Tuyến điều hướng khởi đầu: Chào mừng nếu chưa có hồ sơ hoặc chưa khai dị ứng, Trang chủ nếu đã hoàn thành (D1, D2)
   const initialRoute: NavigationRoute = {
-    name: initialProfile ? 'Home' : 'Welcome',
+    name: initialProfile && initialProfile.allergies !== null ? 'Home' : 'Welcome',
   };
 
   return (

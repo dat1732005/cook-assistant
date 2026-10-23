@@ -22,7 +22,7 @@ export interface SaveProfileInput {
   id?: string;
   display_name?: string;
   servings: number;
-  allergies: AllergenCode[];
+  allergies: AllergenCode[] | null;
   dietary_preference?: string;
   essential_spices?: string[];
   available_equipment?: string[];
@@ -32,7 +32,7 @@ interface UserProfileDbRow {
   id: string;
   display_name: string | null;
   servings: number;
-  allergies: string;
+  allergies: string | null;
   dietary_preference: string | null;
   essential_spices: string;
   available_equipment: string;
@@ -75,8 +75,11 @@ export class UserProfileRepo {
       return null;
     }
 
-    // Giải mã các trường JSON lưu trữ trong SQLite thành mảng dữ liệu
-    const parsedAllergies = JSON.parse(row.allergies || '[]');
+    // Giải mã các trường JSON lưu trữ trong SQLite (null nghĩa là chưa khai dị ứng)
+    const parsedAllergies =
+      row.allergies === null || row.allergies === undefined
+        ? null
+        : JSON.parse(row.allergies);
     const parsedSpices = JSON.parse(row.essential_spices || '[]');
     const parsedEquipment = JSON.parse(row.available_equipment || '[]');
 
@@ -130,7 +133,8 @@ export class UserProfileRepo {
       available_equipment: input.available_equipment ?? [],
     });
 
-    const allergiesJson = JSON.stringify(validated.allergies);
+    const allergiesJson =
+      validated.allergies === null ? null : JSON.stringify(validated.allergies);
     const spicesJson = JSON.stringify(validated.essential_spices);
     const equipmentJson = JSON.stringify(validated.available_equipment);
 

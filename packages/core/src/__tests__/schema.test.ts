@@ -1034,7 +1034,7 @@ describe('T02: Kiểm tra thực thể UserProfile (ít nhất 2 ca hợp lệ, 
     expect(result.success).toBe(true);
     if (result.success) {
       expect(result.data.servings).toBe(2);
-      expect(result.data.allergies).toEqual([]);
+      expect(result.data.allergies).toBeNull();
       expect(result.data.essential_spices).toEqual([]);
       expect(result.data.available_equipment).toEqual([]);
     }

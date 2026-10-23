@@ -2,6 +2,7 @@
   "slug": "trung-chien-test",
   "name": "Trứng chiên thử nghiệm",
   "servings_base": 2,
+  "total_minutes": 10,
   "difficulty": 1,
   "equipment": ["chao", "to"],
   "ingredients": [

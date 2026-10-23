@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS user_profile (
   id TEXT PRIMARY KEY,
   display_name TEXT,
   servings INTEGER NOT NULL DEFAULT 2,
-  allergies TEXT NOT NULL DEFAULT '[]',
+  allergies TEXT,
   dietary_preference TEXT,
   essential_spices TEXT NOT NULL DEFAULT '[]',
   available_equipment TEXT NOT NULL DEFAULT '[]'

@@ -36,9 +36,11 @@
 - **Quy tắc dữ liệu R1–R5:** Tuyệt đối không tự bịa dữ liệu vào `data/`. Thư mục `data/` giữ nguyên trạng thái rỗng sạch (đạt chuẩn `validate-data --strict`) cho tới khi có dữ liệu thật.
 - **Tách biệt dữ liệu giả lập:** Mọi dữ liệu thử nghiệm đặt trong `fixtures/`, đánh dấu `"synthetic": true`, chỉ nạp trong môi trường dev (`__DEV__`), tuyệt đối không đóng gói vào bản release sản phẩm (`production`).
 - **Tập trung chuỗi chữ giao diện:** 100% chuỗi chữ tiếng Việt của giao diện di động đặt tập trung tại `apps/mobile/src/constants/strings.ts`.
+- **Xử lý total_minutes:** Món ở trạng thái `reviewed` hoặc `published` thiếu `total_minutes` thì `validate-data` báo lỗi; bộ lọc thời gian `max_minutes` tự động loại các món thiếu `total_minutes`.
+- **Khai báo dị ứng user_profile:** Trường `allergies` có kiểu `AllergenCode[] | null` (`null`: chưa khai báo, `[]`: đã khai không có dị ứng). `RecipeRepo.list` khi `allergies` là `null` trả về danh sách rỗng kèm mã `ALLERGIES_NOT_DECLARED`. Màn Chào mừng bắt buộc chọn rõ trước khi tiếp tục.
 
 ---
 
 ## 5. Câu hỏi mở
-- **Xử lý món thiếu `total_minutes`:** Khi người dùng lọc thời gian `max_minutes`, món thiếu `total_minutes` nên bị ẩn đi (an toàn trải nghiệm) hay giữ lại (không chặn món)?
+- **Sắp xếp tiếng Việt:** Cơ chế sắp xếp danh sách món trên giao diện và CSDL: dùng bảng chữ cái tiếng Việt chuẩn (Vietnamese Collation / `localeCompare('vi')` có tính dấu thanh và phụ âm ghép như Đ, Ch, Tr) hay sắp xếp nhị phân SQLite (binary ASCII-order) như hiện tại?
 - **Cơ chế cập nhật dữ liệu OTA / Backend:** Phương án đồng bộ các phiên bản công thức mới từ backend vào thiết bị di động khi có mạng.

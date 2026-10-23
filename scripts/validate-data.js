@@ -245,6 +245,15 @@ export function validateData(options = {}) {
 
         const recipe = parsed.data;
 
+        // Báo lỗi nếu món reviewed hoặc published thiếu total_minutes
+        if (recipe.status === 'reviewed' || recipe.status === 'published') {
+          if (typeof recipe.total_minutes !== 'number' || recipe.total_minutes <= 0) {
+            errors.push(
+              `Món "${recipe.name}" (${recipe.slug}) ở trạng thái ${recipe.status} thiếu trường total_minutes (tổng phút nấu hợp lệ).`
+            );
+          }
+        }
+
         // Ghi nhận missing_fields của công thức
         if (Array.isArray(recipe.missing_fields)) {
           for (const field of recipe.missing_fields) {
@@ -471,7 +480,7 @@ export function runCli(argv = process.argv.slice(2)) {
 }
 
 // Chạy trực tiếp qua terminal
-if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const exitCode = runCli();
   process.exit(exitCode);
 }
