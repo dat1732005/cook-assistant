@@ -11,6 +11,7 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 function parseArgs() {
   const args = process.argv.slice(2);
@@ -167,8 +168,7 @@ export function runBundle(options = {}) {
 }
 
 // Chạy trực tiếp qua CLI
-const isMain = import.meta.url === `file://${process.argv[1]?.replace(/\\/g, '/')}`;
-if (isMain) {
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const opts = parseArgs();
   const res = runBundle(opts);
   process.exit(res.code);

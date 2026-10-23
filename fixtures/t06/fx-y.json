@@ -1,0 +1,38 @@
+{
+  "slug": "fx-y",
+  "name": "Canh lạc hầm",
+  "servings_base": 2,
+  "total_minutes": 30,
+  "difficulty": 1,
+  "equipment": ["noi"],
+  "tags": ["canh", "mon-gia"],
+  "status": "published",
+  "reviewer": "tester",
+  "reviewed_at": "2026-10-23T10:00:00Z",
+  "version": 1,
+  "source": "synthetic-test",
+  "confirmed_by": "tester",
+  "missing_fields": [],
+  "synthetic": true,
+  "ingredients": [
+    {
+      "ingredient": "fx-ing-peanut",
+      "qty": 80,
+      "unit": "g",
+      "role": "flavor",
+      "flavor_group": "none",
+      "optional": false
+    }
+  ],
+  "steps": [
+    {
+      "id": "s1",
+      "title": "Nấu món Y",
+      "kind": "active",
+      "seconds": 1800,
+      "after": [],
+      "resources": ["noi"],
+      "text": "Nấu trong 30 phút"
+    }
+  ]
+}

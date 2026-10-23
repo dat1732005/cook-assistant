@@ -8,14 +8,20 @@ export interface RecipeFilterOptions {
    * [codes...]: có dị ứng (loại món chứa mã dị ứng hoặc allergen_codes: null D1a-c)
    */
   userAllergies?: AllergenCode[] | null;
+  /** Bí danh snake_case tương thích T06 */
+  allergies?: AllergenCode[] | null;
   /**
    * Danh sách dụng cụ người dùng có. Món chỉ hiện nếu người dùng có MỌI dụng cụ yêu cầu.
    */
   userEquipment?: string[];
+  /** Bí danh snake_case tương thích T06 */
+  available_equipment?: string[];
   /**
    * Thời gian nấu tối đa (phút), so sánh nhỏ hơn hoặc bằng (total_minutes <= maxMinutes).
    */
   maxMinutes?: number;
+  /** Bí danh snake_case tương thích T06 */
+  max_minutes?: number;
 }
 
 export interface RecipeSummary {
@@ -87,8 +93,17 @@ export class RecipeRepo {
    * Kết quả sắp xếp theo slug tăng dần (mục D trong docs/expected/T05.md).
    */
   async list(filters?: RecipeFilterOptions): Promise<RecipeSummary[]> {
+    const effectiveAllergies =
+      filters?.allergies !== undefined ? filters.allergies : filters?.userAllergies;
+    const effectiveEquipment =
+      filters?.available_equipment !== undefined
+        ? filters.available_equipment
+        : filters?.userEquipment;
+    const effectiveMaxMinutes =
+      filters?.max_minutes !== undefined ? filters.max_minutes : filters?.maxMinutes;
+
     // Trường hợp chưa khai dị ứng: trả về rỗng (D1e - an toàn sức khỏe người dùng)
-    if (filters && filters.userAllergies === null) {
+    if (filters && effectiveAllergies === null) {
       return [];
     }
 
@@ -142,14 +157,17 @@ export class RecipeRepo {
 
     for (const r of rows) {
       // 3.1 Bộ lọc thời gian (D2): total_minutes <= maxMinutes
-      if (filters?.maxMinutes !== undefined && r.total_minutes > filters.maxMinutes) {
+      if (
+        effectiveMaxMinutes !== undefined &&
+        r.total_minutes > effectiveMaxMinutes
+      ) {
         continue;
       }
 
       // 3.2 Bộ lọc dụng cụ (D3): người dùng cần có MỌI dụng cụ mà món yêu cầu
       const requiredEq: string[] = JSON.parse(r.equipment || '[]');
-      if (filters?.userEquipment !== undefined) {
-        const userEqSet = new Set(filters.userEquipment);
+      if (effectiveEquipment !== undefined) {
+        const userEqSet = new Set(effectiveEquipment);
         const hasAllTools = requiredEq.every((eq) => userEqSet.has(eq));
         if (!hasAllTools) {
           continue;
@@ -157,7 +175,7 @@ export class RecipeRepo {
       }
 
       // 3.3 Bộ lọc dị ứng (D1):
-      if (filters?.userAllergies && filters.userAllergies.length > 0) {
+      if (effectiveAllergies && effectiveAllergies.length > 0) {
         const allergenInfo = recipeAllergensMap.get(r.id) || {
           hasUnknownAllergen: false,
           allergenSet: new Set<string>(),
@@ -169,7 +187,7 @@ export class RecipeRepo {
         }
 
         // Loại nếu món chứa bất kỳ dị ứng nào người dùng đã khai
-        const hasConflict = filters.userAllergies.some((userAllergen) =>
+        const hasConflict = effectiveAllergies.some((userAllergen) =>
           allergenInfo.allergenSet.has(userAllergen)
         );
         if (hasConflict) {

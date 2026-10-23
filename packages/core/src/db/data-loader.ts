@@ -61,6 +61,7 @@ export interface IngredientInput {
   source?: string;
   confirmed_by?: string;
   missing_fields?: string[];
+  synthetic?: boolean;
 }
 
 export interface DataBundle {

@@ -1,0 +1,113 @@
+[
+  {
+    "id": "fx-ing-egg-peanut",
+    "name": "Nguyên liệu trứng và đậu phộng",
+    "aliases": [],
+    "group": "protein",
+    "base_unit": "g",
+    "conversions": {},
+    "allergen_codes": ["egg", "peanut"],
+    "reference_price": 50000,
+    "synthetic": true
+  },
+  {
+    "id": "fx-ing-egg",
+    "name": "Nguyên liệu trứng",
+    "aliases": [],
+    "group": "protein",
+    "base_unit": "g",
+    "conversions": {},
+    "allergen_codes": ["egg"],
+    "reference_price": 30000,
+    "synthetic": true
+  },
+  {
+    "id": "fx-ing-peanut",
+    "name": "Nguyên liệu đậu phộng",
+    "aliases": [],
+    "group": "hat",
+    "base_unit": "g",
+    "conversions": {},
+    "allergen_codes": ["peanut"],
+    "reference_price": 40000,
+    "synthetic": true
+  },
+  {
+    "id": "fx-ing-unknown",
+    "name": "Nguyên liệu chưa rõ dị ứng",
+    "aliases": [],
+    "group": "khac",
+    "base_unit": "g",
+    "conversions": {},
+    "allergen_codes": null,
+    "reference_price": 20000,
+    "missing_fields": ["allergen_codes"],
+    "synthetic": true
+  },
+  {
+    "id": "trung-ga",
+    "name": "Trứng gà",
+    "aliases": [],
+    "group": "protein",
+    "base_unit": "cái",
+    "conversions": {},
+    "allergen_codes": ["egg"],
+    "reference_price": 3500,
+    "synthetic": true
+  },
+  {
+    "id": "ca-chua",
+    "name": "Cà chua",
+    "aliases": [],
+    "group": "rau",
+    "base_unit": "g",
+    "conversions": {},
+    "allergen_codes": [],
+    "reference_price": 25000,
+    "synthetic": true
+  },
+  {
+    "id": "hanh-la",
+    "name": "Hành lá",
+    "aliases": [],
+    "group": "rau",
+    "base_unit": "g",
+    "conversions": {},
+    "allergen_codes": [],
+    "reference_price": 15000,
+    "synthetic": true
+  },
+  {
+    "id": "nuoc-mam",
+    "name": "Nước mắm",
+    "aliases": [],
+    "group": "gia-vi",
+    "base_unit": "ml",
+    "conversions": {},
+    "allergen_codes": [],
+    "reference_price": 45000,
+    "synthetic": true
+  },
+  {
+    "id": "duong",
+    "name": "Đường",
+    "aliases": [],
+    "group": "gia-vi",
+    "base_unit": "g",
+    "conversions": {},
+    "allergen_codes": [],
+    "reference_price": 22000,
+    "synthetic": true
+  },
+  {
+    "id": "dau-an",
+    "name": "Dầu ăn",
+    "aliases": [],
+    "group": "gia-vi",
+    "base_unit": "ml",
+    "conversions": {},
+    "allergen_codes": [],
+    "reference_price": 50000,
+    "synthetic": true
+  }
+]
