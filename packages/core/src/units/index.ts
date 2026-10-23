@@ -8,3 +8,4 @@
  */
 
 export * from './conversions.js';
+export * from './scaling.js';

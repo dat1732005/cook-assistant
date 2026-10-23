@@ -1,0 +1,38 @@
+{
+  "slug": "fx-v",
+  "name": "Đậu phộng rang trứng",
+  "servings_base": 2,
+  "total_minutes": 5,
+  "difficulty": 1,
+  "equipment": ["chao"],
+  "tags": ["nhanh", "mon-gia"],
+  "status": "published",
+  "reviewer": "tester",
+  "reviewed_at": "2026-10-23T10:00:00Z",
+  "version": 1,
+  "source": "synthetic-test",
+  "confirmed_by": "tester",
+  "missing_fields": [],
+  "synthetic": true,
+  "ingredients": [
+    {
+      "ingredient": "fx-ing-egg-peanut",
+      "qty": 50,
+      "unit": "g",
+      "role": "flavor",
+      "flavor_group": "none",
+      "optional": false
+    }
+  ],
+  "steps": [
+    {
+      "id": "s1",
+      "title": "Nấu món V",
+      "kind": "active",
+      "seconds": 300,
+      "after": [],
+      "resources": ["chao"],
+      "text": "Nấu trong 5 phút"
+    }
+  ]
+}

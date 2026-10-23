@@ -1,0 +1,38 @@
+{
+  "slug": "fx-x",
+  "name": "Trứng luộc lòng đào",
+  "servings_base": 2,
+  "total_minutes": 10,
+  "difficulty": 1,
+  "equipment": ["chao"],
+  "tags": ["mon-gia"],
+  "status": "published",
+  "reviewer": "tester",
+  "reviewed_at": "2026-10-23T10:00:00Z",
+  "version": 1,
+  "source": "synthetic-test",
+  "confirmed_by": "tester",
+  "missing_fields": [],
+  "synthetic": true,
+  "ingredients": [
+    {
+      "ingredient": "fx-ing-egg",
+      "qty": 100,
+      "unit": "g",
+      "role": "flavor",
+      "flavor_group": "none",
+      "optional": false
+    }
+  ],
+  "steps": [
+    {
+      "id": "s1",
+      "title": "Nấu món X",
+      "kind": "active",
+      "seconds": 600,
+      "after": [],
+      "resources": ["chao"],
+      "text": "Nấu trong 10 phút"
+    }
+  ]
+}
