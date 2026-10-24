@@ -13,13 +13,13 @@
 | **T03** | Khung dữ liệu rỗng chuẩn, script `scripts/validate-data.js` (kiểm tra toàn vẹn, cờ `--strict`, cờ `--report-missing`) | **ĐÃ XONG** | `main` | `8e88863`<br>*(nhánh `task/T03` tại `3ee6904`)* |
 | **T04** | Thuật toán Scheduler: `plan()`, `replan()`, `checkManualStart()`, kiểm tra chu trình, bám sát `docs/expected/T04.md` (123 tests) | **ĐÃ XONG** | `main` | `4746bd2`<br>*(nhánh `task/T04` tại `aa40aba`)* |
 | **T05** | Tầng CSDL SQLite (`SqlDriver` cho Node & Expo SQLite), `MigrationRunner`, đóng gói dữ liệu `bundle-data.js`, `RecipeRepo` lọc an toàn dị ứng (43 tests) | **ĐÃ XONG** | `main` | `7fce580`<br>*(nhánh `task/T05` tại `1836929`)* |
-| **T06** | Màn hình Chào mừng (lưu SQLite `user_profile`), Trang chủ (lọc thời gian/dị ứng), Chi tiết món (pure scaling đơn vị đời thường), tập trung chuỗi chữ (28 tests) | **ĐÃ XONG** *(Chờ duyệt)* | `task/T06` | `e87fa3d` |
+| **T-INFRA** | Quản trị dự án: `AGENTS.md`, `docs/STATUS.md`, script `pnpm verify` (7 bước), quy trình GitHub Actions CI | **ĐÃ GỘP MAIN** | `main` | `2ca27ee`<br>*(nhánh `task/T-INFRA` tại `b7cf6d3`)* |
+| **T06** | Màn hình Chào mừng (lưu SQLite `user_profile`), Trang chủ (lọc thời gian/dị ứng), Chi tiết món (pure scaling đơn vị đời thường), tập trung chuỗi chữ, quy tắc dị ứng nullable và total_minutes (35 tests) | **ĐÃ GỘP MAIN** | `main` | `5a0f281`<br>*(nhánh `task/T06` tại `f76dec3`)* |
 
 ---
 
 ## 2. Việc kế tiếp
-1. **Nghiệm thu T06 & T-INFRA:** Chủ dự án kiểm tra báo cáo T06 và T-INFRA, duyệt gộp các nhánh vào `main`.
-2. **Triển khai T07:** Xây dựng `SessionService` quản lý trạng thái phiên nấu ăn cục bộ trong SQLite (`cook_session`, `cook_step_state`, lưu bước đang nấu, bắt đầu, tạm dừng, hoàn thành).
+1. **Chuẩn bị T07 (Chưa làm T07):** Xây dựng `SessionService` quản lý trạng thái phiên nấu ăn cục bộ trong SQLite (`cook_session`, `cook_step_state`, lưu bước đang nấu, bắt đầu, tạm dừng, hoàn thành).
 
 ---
 
