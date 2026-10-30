@@ -11,7 +11,13 @@ import React, { createContext, useContext, useState, useCallback, useMemo } from
 import { STRINGS } from '../constants/strings.js';
 
 /** Tên các màn hình trong ngăn xếp điều hướng */
-export type ScreenName = 'Welcome' | 'Home' | 'RecipeDetail';
+export type ScreenName =
+  | 'Welcome'
+  | 'Home'
+  | 'RecipeDetail'
+  | 'Prepare'
+  | 'Cook'
+  | 'Finish';
 
 /** Cấu trúc một mục trong stack điều hướng */
 export interface NavigationRoute {

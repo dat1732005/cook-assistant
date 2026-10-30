@@ -16,7 +16,6 @@ import {
   TouchableOpacity,
   SafeAreaView,
   ActivityIndicator,
-  Alert,
 } from 'react-native';
 import {
   RecipeRepo,
@@ -35,7 +34,7 @@ export interface RecipeDetailScreenProps {
   recipeRepo: RecipeRepo;
   userServings: number;
   onBack: () => void;
-  onStartCooking?: () => void;
+  onStartCooking?: (recipe?: RecipeDetail, servings?: number, mode?: OptimizationMode) => void;
 }
 
 export function RecipeDetailScreen({
@@ -103,17 +102,12 @@ export function RecipeDetailScreen({
     return scaleIngredients(recipe.ingredients, servings, recipe.servings_base);
   }, [recipe, servings]);
 
-  // Nhấn nút Bắt đầu nấu (giữ chỗ chờ T09)
+  // Nhấn nút Bắt đầu nấu
   const handleStartCooking = useCallback(() => {
-    // Thông báo giữ chỗ chờ T09
-    Alert.alert(
-      STRINGS.detail.startCookingButton,
-      STRINGS.detail.startCookingPlaceholderNotice
-    );
-    if (onStartCooking) {
-      onStartCooking();
+    if (onStartCooking && recipe) {
+      onStartCooking(recipe, servings, 'fastest');
     }
-  }, [onStartCooking]);
+  }, [onStartCooking, recipe, servings]);
 
   return (
     <SafeAreaView style={styles.safeArea}>

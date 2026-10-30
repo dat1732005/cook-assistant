@@ -28,21 +28,26 @@ import {
 import { WelcomeScreen } from './src/screens/WelcomeScreen.js';
 import { HomeScreen } from './src/screens/HomeScreen.js';
 import { RecipeDetailScreen } from './src/screens/RecipeDetailScreen.js';
+import { PrepareScreen } from './src/screens/PrepareScreen.js';
+import { CookScreen } from './src/screens/CookScreen.js';
+import { FinishScreen } from './src/screens/FinishScreen.js';
 import { STRINGS } from './src/constants/strings.js';
 
 interface MainNavigatorProps {
   recipeRepo: RecipeRepo;
   profileRepo: UserProfileRepo;
   initialProfile: UserProfile | null;
+  driver?: SqlDriver;
 }
 
 /**
- * Thành phần điều hướng chính chuyển đổi giữa 3 màn hình theo đỉnh ngăn xếp (T06.1).
+ * Thành phần điều hướng chính chuyển đổi giữa các màn hình theo đỉnh ngăn xếp.
  */
 function MainNavigator({
   recipeRepo,
   profileRepo,
   initialProfile,
+  driver,
 }: MainNavigatorProps): React.JSX.Element {
   const { currentRoute, navigate, replace, goBack, canGoBack } = useNavigation();
   const [profile, setProfile] = useState<UserProfile | null>(initialProfile);
@@ -73,6 +78,50 @@ function MainNavigator({
         recipeRepo={recipeRepo}
         userServings={profile?.servings ?? 2}
         onBack={goBack}
+        onStartCooking={(recipe, servings, mode) => {
+          navigate('Prepare', { recipe, servings, mode });
+        }}
+      />
+    );
+  }
+
+  // Phân nhánh hiển thị màn hình Chuẩn bị (T09)
+  if (currentRoute.name === 'Prepare') {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const rec = currentRoute.params?.recipe as any;
+    return (
+      <PrepareScreen
+        recipe={rec}
+        servings={Number(currentRoute.params?.servings || profile?.servings || 2)}
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        mode={currentRoute.params?.mode as any}
+      />
+    );
+  }
+
+  // Phân nhánh hiển thị màn hình Nấu trực tiếp (T09)
+  if (currentRoute.name === 'Cook') {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const rec = currentRoute.params?.recipe as any;
+    return (
+      <CookScreen
+        recipe={rec}
+        servings={Number(currentRoute.params?.servings || profile?.servings || 2)}
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        mode={currentRoute.params?.mode as any}
+        driver={driver}
+      />
+    );
+  }
+
+  // Phân nhánh hiển thị màn hình Hoàn tất món ăn (T09)
+  if (currentRoute.name === 'Finish') {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const rec = currentRoute.params?.recipe as any;
+    return (
+      <FinishScreen
+        recipe={rec}
+        dishName={currentRoute.params?.dishName as string}
       />
     );
   }
@@ -97,6 +146,7 @@ export interface AppProps {
  */
 export default function App({ driverOverride }: AppProps): React.JSX.Element {
   const [ready, setReady] = useState<boolean>(false);
+  const [activeDriver, setActiveDriver] = useState<SqlDriver | null>(null);
   const [recipeRepo, setRecipeRepo] = useState<RecipeRepo | null>(null);
   const [profileRepo, setProfileRepo] = useState<UserProfileRepo | null>(null);
   const [initialProfile, setInitialProfile] = useState<UserProfile | null>(null);
@@ -136,6 +186,7 @@ export default function App({ driverOverride }: AppProps): React.JSX.Element {
         const currentProfile = await pRepo.getProfile();
 
         if (isMounted) {
+          setActiveDriver(driver);
           setProfileRepo(pRepo);
           setRecipeRepo(rRepo);
           setInitialProfile(currentProfile);
@@ -184,6 +235,7 @@ export default function App({ driverOverride }: AppProps): React.JSX.Element {
         recipeRepo={recipeRepo}
         profileRepo={profileRepo}
         initialProfile={initialProfile}
+        driver={activeDriver || undefined}
       />
       <StatusBar style="light" />
     </NavigationProvider>

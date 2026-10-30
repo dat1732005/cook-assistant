@@ -124,4 +124,53 @@ export const STRINGS = {
     startCookingButton: 'Bắt đầu nấu món này',
     startCookingPlaceholderNotice: 'Tính năng hỗ trợ phiên nấu từng bước đang chuẩn bị ra mắt ở T09.',
   },
+
+  // Màn hình Chuẩn bị (PrepareScreen - T09)
+  prepare: {
+    headerTitle: 'Chuẩn bị nấu ăn',
+    subtitle: 'Kiểm tra nguyên liệu và dụng cụ trước khi bắt đầu',
+    ingredientsHeader: 'Nguyên liệu cần chuẩn bị',
+    equipmentHeader: 'Dụng cụ cần chuẩn bị',
+    safetyNoticeTitle: 'Lưu ý an toàn thực phẩm',
+    safetyMissingBlockTitle: 'Không thể bắt đầu món ăn này!',
+    safetyMissingBlockMessage:
+      'Công thức này có quy tắc an toàn thực phẩm còn thiếu thông tin (MISSING). Để bảo đảm an toàn sức khỏe, hệ thống chặn bắt đầu phiên nấu cho đến khi công thức được cập nhật đầy đủ.',
+    startCookingButton: 'Sẵn sàng, bắt đầu nấu ngay',
+  },
+
+  // Màn hình Nấu (CookScreen - T09)
+  cook: {
+    headerTitle: 'Đang nấu',
+    nowGroupTitle: 'Bây giờ làm (Now)',
+    waitingGroupTitle: 'Đang chờ đếm giờ (Waiting)',
+    nextGroupTitle: 'Tiếp theo (Next)',
+    largeDoneButton: 'Xong',
+    passiveStartedButton: 'Đã bắt đầu',
+    approxMinutesPrefix: 'khoảng',
+    minutesSuffix: 'phút',
+    secondsSuffix: 'giây',
+    cuePrefix: 'Dấu hiệu nhận biết:',
+    timerButton: 'Hẹn giờ',
+    manualTimerPrompt: 'Nhập số giây muốn hẹn giờ:',
+    timerRunningBadge: 'Đang đếm ngược:',
+    keepAwakeActive: 'Màn hình luôn sáng',
+    exitConfirmTitle: 'Thoát khỏi phiên nấu ăn?',
+    exitConfirmMessage: 'Bạn có chắc chắn muốn lùi lại hoặc thoát? Phiên nấu hiện tại sẽ được lưu trạng thái.',
+    abandonConfirmTitle: 'Bỏ dở phiên nấu ăn?',
+    abandonConfirmMessage: 'Hủy bỏ phiên nấu này? Mọi đồng hồ hẹn giờ và thông báo sẽ bị hủy hoàn toàn.',
+    abandonButton: 'Bỏ dở phiên',
+    resumeButton: 'Tiếp tục nấu',
+    safetyConfirmTitle: 'Xác nhận an toàn bắt buộc',
+    safetySourcePrefix: 'Nguồn quy tắc:',
+    safetyCheckboxLabel: 'Tôi đã kiểm tra và xác nhận tuân thủ quy tắc an toàn này',
+    safetyBlockedAlert: 'Bước này có quy tắc an toàn bắt buộc. Bạn cần đánh dấu xác nhận trước khi bấm Xong.',
+  },
+
+  // Màn hình Hoàn tất (FinishScreen - T09)
+  finish: {
+    headerTitle: 'Hoàn tất món ăn',
+    title: 'Chúc mừng bạn đã hoàn thành món ăn!',
+    subtitle: 'Món ăn đã sẵn sàng để dọn ra bàn. Chúc bạn và gia đình có bữa ăn ngon miệng!',
+    backToHomeButton: 'Về trang chủ',
+  },
 } as const;
