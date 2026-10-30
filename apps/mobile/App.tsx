@@ -28,7 +28,6 @@ import {
 import { WelcomeScreen } from './src/screens/WelcomeScreen.js';
 import { HomeScreen } from './src/screens/HomeScreen.js';
 import { RecipeDetailScreen } from './src/screens/RecipeDetailScreen.js';
-import { DEV_DATA_BUNDLE } from './src/data/dev-fixtures.js';
 import { STRINGS } from './src/constants/strings.js';
 
 interface MainNavigatorProps {
@@ -121,12 +120,10 @@ export default function App({ driverOverride }: AppProps): React.JSX.Element {
         await runner.run();
 
         // Kiểm tra cờ môi trường phát triển: Khi chạy __DEV__ thì nạp bộ fixture mẫu (T06.3, R1, R3)
-        const isDev =
-          typeof __DEV__ !== 'undefined'
-            ? __DEV__
-            : process.env.NODE_ENV !== 'production';
-
-        if (isDev) {
+        // Trong bản build production, khối if (__DEV__) và require bên trong được loại bỏ hoàn toàn (DCE).
+        if (__DEV__) {
+          // eslint-disable-next-line @typescript-eslint/no-require-imports
+          const { DEV_DATA_BUNDLE } = require('./src/data/dev-fixtures.js');
           await loadDataBundle(driver, DEV_DATA_BUNDLE, {
             allowDraft: true,
           });
