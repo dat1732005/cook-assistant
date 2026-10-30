@@ -25,6 +25,9 @@ export * from './scheduler/index.js';
 // Xuất tầng cơ sở dữ liệu SQLite và Repository (T05)
 export * from './db/index.js';
 
+// Xuất bộ hẹn giờ và tính toán thời gian thuần (T08)
+export * from './timer/index.js';
+
 /**
  * Hàm chào mẫu kiểm tra liên kết hệ thống (giữ lại từ T01 để tương thích ngược).
  *
