@@ -10,7 +10,7 @@
  */
 
 import { SqlDriver } from './driver.js';
-import type { Recipe, RecipeStep } from '../schemas/recipe.js';
+import type { RecipeStep } from '../schemas/recipe.js';
 import type { CookSession, RunningTimer } from '../schemas/session.js';
 import { checkManualStart } from '../scheduler/manual-check.js';
 import { replan } from '../scheduler/replan.js';

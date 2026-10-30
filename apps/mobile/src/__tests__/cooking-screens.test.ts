@@ -51,6 +51,8 @@ describe('T09: Màn Chuẩn bị, Nấu, Hoàn tất (Kiểm thử cấu trúc g
     difficulty: 1,
     status: 'published',
     version: 1,
+    tags: [],
+    missing_fields: [],
     source: 'Sách hướng dẫn nấu ăn chuẩn ATTP 2026',
     equipment: ['chao', 'noi', 'dao'],
     ingredients: [
