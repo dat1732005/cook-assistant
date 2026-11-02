@@ -19,7 +19,7 @@ import {
 import { RAW_WEIGHTS, SUGGEST_WEIGHTS, MVP_NORMALIZATION_FACTOR } from '../suggest/weights-config.js';
 
 // ==========================================
-// ĐỌC KỲ VỌNG TRỰC TIẾP TỪ docs/expected/T10.md
+// ĐỌC KỲ VỌNG TRỰC TIẾP TỪ docs/expected/T10.md & T12.md
 // ==========================================
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -27,6 +27,12 @@ const expectedFilePath = path.resolve(__dirname, '../../../../docs/expected/T10.
 const t10RawContent = fs.readFileSync(expectedFilePath, 'utf-8');
 
 const jsonBlocks = [...t10RawContent.matchAll(/```json\s*(\{[\s\S]*?\})\s*```/g)]
+  .map((m) => (m && m[1] ? (JSON.parse(m[1]) as Record<string, unknown>) : null))
+  .filter((b): b is Record<string, unknown> => b !== null);
+
+const t12FilePath = path.resolve(__dirname, '../../../../docs/expected/T12.md');
+const t12RawContent = fs.readFileSync(t12FilePath, 'utf-8');
+const t12Blocks = [...t12RawContent.matchAll(/```json\s*(\{[\s\S]*?\})\s*```/g)]
   .map((m) => (m && m[1] ? (JSON.parse(m[1]) as Record<string, unknown>) : null))
   .filter((b): b is Record<string, unknown> => b !== null);
 
@@ -67,11 +73,29 @@ interface BlockPType {
   >;
 }
 
+interface BlockEType {
+  case: 'E';
+  prices: Record<string, number>;
+  history: Record<string, number>;
+  cases: Array<{
+    id: string;
+    ranking:
+      | Array<{ recipe: string; score: number; cost: number; range: [number, number] }>
+      | string[];
+    tolerance?: number;
+    missing_price?: string[];
+    unpriced?: string[];
+    cost_scores?: Record<string, number>;
+    allergies?: string[];
+  }>;
+}
+
 const blockK = jsonBlocks.find((b) => b['case'] === 'K') as unknown as BlockKType;
 const blockP = jsonBlocks.find((b) => b['case'] === 'P') as unknown as BlockPType;
+const blockE = t12Blocks.find((b) => b['case'] === 'E') as unknown as BlockEType;
 
-if (!blockK || !blockP) {
-  throw new Error('Không tìm thấy khối JSON Ca K hoặc Ca P trong docs/expected/T10.md');
+if (!blockK || !blockP || !blockE) {
+  throw new Error('Không tìm thấy khối JSON Ca K, Ca P trong T10.md hoặc Ca E trong T12.md');
 }
 
 // Bảng quy đổi giả định theo T10.md
@@ -319,12 +343,44 @@ describe('T12: SuggestService & Trọng số gợi ý món (đối chiếu docs/
     });
   });
 
-  // =========================================================================
-  // CHẾ ĐỘ ƯỚC CHỪNG (ESTIMATION MODE - T12.3)
-  // =========================================================================
-  describe('Chế độ ước chừng (T12.3: chỉ đề xuất công thức, chờ duyệt)', () => {
-    it('Chế độ ước chừng trả về khoảng chi phí ±20% dạng [min, max]', () => {
-      const recipes = createSyntheticRecipes();
+  // =========================================
+  // CHẾ ĐỘ ƯỚC CHỪNG (ESTIMATION MODE - T12 BỔ SUNG - CA E)
+  // =========================================
+  describe('Chế độ ước chừng (T12 bổ sung bám docs/expected/T12.md - Ca E)', () => {
+    function createRecipesWithPrices(
+      overridePrices?: Record<string, number | null>,
+    ): SuggestRecipeInput[] {
+      return (['M1', 'M2', 'M3'] as const).map((key) => {
+        const raw = blockP.recipes[key]!;
+        return {
+          id: key,
+          slug: recipeSlugs[key] ?? key.toLowerCase(),
+          name: `Món ${key}`,
+          servings_base: raw.servings_base,
+          total_minutes: 30,
+          equipment: blockK.equipment[key] ?? [],
+          ingredients: raw.ingredients.map((ing) => {
+            let price: number | null = blockE.prices[ing.i] ?? null;
+            if (overridePrices && ing.i in overridePrices) {
+              price = overridePrices[ing.i] ?? null;
+            }
+            return {
+              ingredientId: ing.i,
+              qty: ing.qty,
+              unit: ing.unit,
+              optional: ing.optional ?? false,
+              allergen_codes: syntheticAllergenMap[ing.i] ?? [],
+              referencePrice: price,
+            };
+          }),
+        };
+      });
+    }
+
+    it('E1: Ba món, kho trống, giá đầy đủ -> thứ tự M2 (0.7778), M1 (0.6181), M3 (0.2222) và khoảng chi phí ±20%', () => {
+      const e1Case = blockE.cases.find((c) => c.id === 'E1')!;
+      const recipes = createRecipesWithPrices();
+
       const results = suggestService.suggest({
         recipes,
         profile: {
@@ -333,27 +389,91 @@ describe('T12: SuggestService & Trọng số gợi ý món (đối chiếu docs/
           allergies: [],
         },
         pantry: {}, // Kho trống
+        cookHistory: blockE.history,
         conversionsMap: syntheticConversions,
         mode: 'estimation',
       });
 
-      expect(results.length).toBe(3);
-      for (const r of results) {
-        expect(r.estimatedCostRange).toBeDefined();
-        const costRange = r.estimatedCostRange!;
-        expect(costRange.min).toBeLessThanOrEqual(costRange.max);
-        // Kiểm tra tỉ lệ min / max tương đương 0.8 / 1.2 ≈ 0.667
-        expect(costRange.min / costRange.max).toBeCloseTo(0.8 / 1.2, 2);
+      const expectedRankings = e1Case.ranking as Array<{
+        recipe: string;
+        score: number;
+        cost: number;
+        range: [number, number];
+      }>;
+
+      expect(results.length).toBe(expectedRankings.length);
+
+      for (let i = 0; i < expectedRankings.length; i++) {
+        const exp = expectedRankings[i]!;
+        const act = results[i]!;
+        expect(act.recipeId).toBe(exp.recipe);
+        expect(Math.abs(act.score - exp.score)).toBeLessThanOrEqual(e1Case.tolerance ?? 0.0001);
+        expect(act.cost).toBe(exp.cost);
+        expect(act.range).toEqual(exp.range);
+        expect(act.estimatedCostRange).toEqual({ min: exp.range[0], max: exp.range[1] });
       }
+    });
+
+    it('E2: Thịt ba chỉ chưa có giá -> M3 không xếp hạng, nằm trong unpriced; xếp hạng còn M2, M1; điểm chi phí chuẩn hóa lại M2=1, M1=0', () => {
+      const e2Case = blockE.cases.find((c) => c.id === 'E2')!;
+      const overridePrices: Record<string, number | null> = {};
+      for (const ing of e2Case.missing_price ?? []) {
+        overridePrices[ing] = null;
+      }
+
+      const recipes = createRecipesWithPrices(overridePrices);
+
+      const results = suggestService.suggest({
+        recipes,
+        profile: {
+          servings: 2,
+          equipment: ['chao', 'noi'],
+          allergies: [],
+        },
+        pantry: {},
+        cookHistory: blockE.history,
+        conversionsMap: syntheticConversions,
+        mode: 'estimation',
+      });
+
+      expect(results.map((r) => r.recipeId)).toEqual(e2Case.ranking);
+      expect(results.unpriced).toEqual(e2Case.unpriced);
+
+      if (e2Case.cost_scores) {
+        for (const [rId, expectedDiemChiPhi] of Object.entries(e2Case.cost_scores)) {
+          const found = results.find((r) => r.recipeId === rId);
+          expect(found?.breakdown.diemChiPhi).toBe(expectedDiemChiPhi);
+        }
+      }
+    });
+
+    it('E3: Người dùng khai dị ứng trứng -> M1 và M3 bị loại, chỉ còn M2 với điểm_chi_phí = 1', () => {
+      const e3Case = blockE.cases.find((c) => c.id === 'E3')!;
+      const recipes = createRecipesWithPrices();
+
+      const results = suggestService.suggest({
+        recipes,
+        profile: {
+          servings: 2,
+          equipment: ['chao', 'noi'],
+          allergies: e3Case.allergies ?? [],
+        },
+        pantry: {},
+        cookHistory: blockE.history,
+        conversionsMap: syntheticConversions,
+        mode: 'estimation',
+      });
+
+      expect(results.map((r) => r.recipeId)).toEqual(e3Case.ranking);
+      expect(results[0]?.breakdown.diemChiPhi).toBe(1);
     });
   });
 
   // =========================================================================
   // CHỨNG MINH ĐỎ KHI ĐỔI SỐ TRONG KHỐI JSON (TAMPER PROOF)
   // =========================================================================
-  describe('Chứng minh test ĐỎ khi sửa khối JSON kỳ vọng của docs/expected/T10.md', () => {
-    it('Sửa score M1 từ 0.9444 thành 0.1111 -> expect văng AssertionError', () => {
-      // Sửa một số trong chuỗi gốc của T10.md
+  describe('Chứng minh test ĐỎ khi sửa khối JSON kỳ vọng của docs/expected/T10.md & T12.md', () => {
+    it('Sửa score M1 từ 0.9444 thành 0.1111 trong T10.md -> expect văng AssertionError', () => {
       const tamperedContent = t10RawContent.replace('"score":0.9444', '"score":0.1111');
       expect(tamperedContent).not.toBe(t10RawContent);
 
@@ -363,11 +483,27 @@ describe('T12: SuggestService & Trọng số gợi ý món (đối chiếu docs/
 
       const k1Tampered = tamperedBlockK.cases.find((c) => c.id === 'K1')!;
       const expTamperedRankings = k1Tampered.ranking as Array<{ recipe: string; score: number }>;
-      const actualScoreM1 = 0.9444; // Điểm thực tế tính ra
+      const actualScoreM1 = 0.9444;
 
-      // actualScoreM1 là 0.9444, số bị sửa trong JSON là 0.1111 -> so sánh phải văng lỗi
       expect(() => {
         expect(Math.abs(actualScoreM1 - expTamperedRankings[0]!.score)).toBeLessThanOrEqual(0.0001);
+      }).toThrow();
+    });
+
+    it('Sửa score M2 trong E1 từ 0.7778 thành 0.9999 trong T12.md -> expect văng AssertionError', () => {
+      const tamperedContent = t12RawContent.replace('"score":0.7778', '"score":0.9999');
+      expect(tamperedContent).not.toBe(t12RawContent);
+
+      const tamperedBlocks = [...tamperedContent.matchAll(/```json\s*(\{[\s\S]*?\})\s*```/g)]
+        .map((m) => JSON.parse(m[1]!) as Record<string, unknown>);
+      const tamperedBlockE = tamperedBlocks.find((b) => b['case'] === 'E') as unknown as BlockEType;
+
+      const e1Tampered = tamperedBlockE.cases.find((c) => c.id === 'E1')!;
+      const expTamperedRankings = e1Tampered.ranking as Array<{ recipe: string; score: number }>;
+      const actualScoreM2 = 0.7778;
+
+      expect(() => {
+        expect(Math.abs(actualScoreM2 - expTamperedRankings[0]!.score)).toBeLessThanOrEqual(0.0001);
       }).toThrow();
     });
   });

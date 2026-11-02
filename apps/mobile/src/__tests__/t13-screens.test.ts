@@ -114,7 +114,7 @@ describe('T13: Kiểm thử màn Hoàn tất, Kho và Gợi ý trên Trang chủ
           ingredientId: 'thit-ba-chi',
           qty: 200,
           unit: 'g',
-          referencePrice: 30000,
+          referencePrice: 150,
           allergen_codes: [],
         },
       ],
