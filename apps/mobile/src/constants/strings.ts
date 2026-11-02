@@ -97,6 +97,22 @@ export const STRINGS = {
     difficultyMedium: 'Vừa',
     difficultyHard: 'Khó',
     viewDetailButton: 'Xem chi tiết món',
+    pantryButtonText: 'Kho',
+    servingsLabel: 'Khẩu phần:',
+    personUnit: 'người',
+    mealLabel: 'Bữa:',
+    meals: {
+      breakfast: 'sáng',
+      lunch: 'trưa',
+      dinner: 'tối',
+    },
+    estimationToggleTitle: 'Đi chợ (ước chừng)',
+    estimationToggleActiveDesc: 'Hiển thị khoảng chi phí tham khảo ±20%',
+    estimationToggleInactiveDesc: 'Ưu tiên món dùng nguyên liệu đang có sẵn trong kho',
+    dishListEstimationTitle: 'Món đề xuất đi chợ',
+    dishCountUnit: 'món',
+    costEstimatePrefix: 'Ước tính:',
+    costEstimateNote: '* giá tham khảo (±20%)',
   },
 
   // Màn hình Chi tiết món (RecipeDetailScreen)

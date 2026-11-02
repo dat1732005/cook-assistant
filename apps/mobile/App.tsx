@@ -18,6 +18,7 @@ import {
   RecipeRepo,
   UserProfileRepo,
   UserProfile,
+  PantryService,
 } from '@cook/core';
 import { ExpoSqliteDriver } from './src/db/expo-driver.js';
 import {
@@ -31,6 +32,8 @@ import { RecipeDetailScreen } from './src/screens/RecipeDetailScreen.js';
 import { PrepareScreen } from './src/screens/PrepareScreen.js';
 import { CookScreen } from './src/screens/CookScreen.js';
 import { FinishScreen } from './src/screens/FinishScreen.js';
+import { QuickAddScreen } from './src/screens/QuickAddScreen.js';
+import { PantryScreen } from './src/screens/PantryScreen.js';
 import { STRINGS } from './src/constants/strings.js';
 
 interface MainNavigatorProps {
@@ -114,23 +117,55 @@ function MainNavigator({
     );
   }
 
-  // Phân nhánh hiển thị màn hình Hoàn tất món ăn (T09)
+  // Phân nhánh hiển thị màn hình Hoàn tất món ăn (T09, T13.1)
   if (currentRoute.name === 'Finish') {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const rec = currentRoute.params?.recipe as any;
+    const pantryService = driver ? new PantryService(driver) : undefined;
     return (
       <FinishScreen
         recipe={rec}
         dishName={currentRoute.params?.dishName as string}
+        sessionId={currentRoute.params?.sessionId as string}
+        pantryService={pantryService}
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        deductedItems={currentRoute.params?.deductedItems as any}
       />
     );
   }
 
-  // Mặc định hiển thị màn hình Trang chủ (D2)
+  // Phân nhánh hiển thị màn hình Thêm nhanh nguyên liệu (T11)
+  if (currentRoute.name === 'QuickAdd' && driver) {
+    const pantryService = new PantryService(driver);
+    return (
+      <QuickAddScreen
+        pantryService={pantryService}
+        onDone={() => goBack()}
+        onBack={canGoBack ? goBack : undefined}
+      />
+    );
+  }
+
+  // Phân nhánh hiển thị màn hình Kho nguyên liệu (T13.2)
+  if (currentRoute.name === 'Pantry' && driver) {
+    const pantryService = new PantryService(driver);
+    return (
+      <PantryScreen
+        pantryService={pantryService}
+        onOpenQuickAdd={() => navigate('QuickAdd')}
+        onBack={canGoBack ? goBack : undefined}
+      />
+    );
+  }
+
+  // Mặc định hiển thị màn hình Trang chủ (D2, T13.3, T13.4)
+  const homePantryService = driver ? new PantryService(driver) : undefined;
   return (
     <HomeScreen
       recipeRepo={recipeRepo}
       profile={profile}
+      pantryService={homePantryService}
+      onOpenPantry={() => navigate('Pantry')}
       onOpenProfile={() => navigate('Welcome', { isEditing: true })}
       onSelectRecipe={(slug) => navigate('RecipeDetail', { recipeSlug: slug })}
     />

@@ -1,13 +1,14 @@
 /**
  * File: apps/mobile/src/screens/HomeScreen.tsx
- * Làm gì: Màn hình Trang chủ hiển thị danh sách món ăn gợi ý an toàn từ SQLite, bộ lọc thời gian và nút mở lại hồ sơ.
- * Nhận vào: recipeRepo, profile, callback onOpenProfile, callback onSelectRecipe.
- * Trả ra: Giao diện Trang chủ với danh sách món đã lọc sạch dị ứng và sắp xếp theo tên.
- * Ai gọi: Navigation router / App.tsx.
- * Bám theo: Mục T06.3, T06.6 trong docs/tasks.md và docs/expected/T06.md mục C (C1-C8).
+ * Làm gì: Màn hình Trang chủ hiển thị danh sách món ăn gợi ý từ SuggestService (T12, T13.3),
+ *         bộ lọc thời gian, công tắc "Đi chợ (ước chừng)" với chi phí dạng khoảng (T13.4),
+ *         chọn số người ăn và bữa ăn, cùng nút mở Kho nguyên liệu (T13.2).
+ * Nhận vào: recipeRepo, profile, onOpenProfile, onSelectRecipe, pantryService, onOpenPantry.
+ * Trả ra: Giao diện Trang chủ hoàn chỉnh.
+ * Bám theo: Mục T06.3, T06.6, T13.3, T13.4 trong docs/tasks.md.
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   StyleSheet,
   Text,
@@ -16,8 +17,18 @@ import {
   TouchableOpacity,
   SafeAreaView,
   ActivityIndicator,
+  Switch,
 } from 'react-native';
-import { RecipeRepo, RecipeSummary, UserProfile, getHomeRecipes } from '@cook/core';
+import {
+  RecipeRepo,
+  RecipeSummary,
+  UserProfile,
+  getHomeRecipes,
+  SuggestService,
+  SuggestRecipeInput,
+  ScoredRecipe,
+  PantryService,
+} from '@cook/core';
 import { STRINGS } from '../constants/strings.js';
 
 export interface HomeScreenProps {
@@ -25,88 +36,243 @@ export interface HomeScreenProps {
   profile: UserProfile | null;
   onOpenProfile: () => void;
   onSelectRecipe: (slug: string) => void;
+  pantryService?: PantryService;
+  onOpenPantry?: () => void;
 }
 
 /** Các mốc thời gian lọc phổ biến (phút) */
 const TIME_FILTER_PRESETS = [null, 9, 15, 20, 30] as const;
+
+/** Các bữa ăn trong ngày */
+const MEAL_TYPES = ['breakfast', 'lunch', 'dinner'] as const;
+type MealType = (typeof MEAL_TYPES)[number];
 
 export function HomeScreen({
   recipeRepo,
   profile,
   onOpenProfile,
   onSelectRecipe,
+  pantryService,
+  onOpenPantry,
 }: HomeScreenProps): React.JSX.Element {
   const [recipes, setRecipes] = useState<RecipeSummary[]>([]);
+  const [scoredMap, setScoredMap] = useState<Record<string, ScoredRecipe>>({});
   const [selectedMaxMinutes, setSelectedMaxMinutes] = useState<number | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
 
-  // Tải danh sách món ăn từ CSDL SQLite kết hợp lọc an toàn dị ứng và thời gian (C1-C8)
+  // Tùy biến theo T13.3:
+  // 1. Số người ăn (mặc định lấy từ hồ sơ người dùng)
+  const [servings, setServings] = useState<number>(profile?.servings ?? 2);
+  // 2. Bữa nào (sáng, trưa, tối)
+  const [selectedMeal, setSelectedMeal] = useState<MealType>('lunch');
+  // 3. Công tắc "Đi chợ (ước chừng)"
+  const [isEstimationMode, setIsEstimationMode] = useState<boolean>(false);
+
+  const suggestService = useMemo(() => new SuggestService(), []);
+
+  // Tải danh sách món ăn từ SQLite kết hợp tính điểm bằng SuggestService (T13.3)
   const loadDishes = useCallback(async () => {
     setLoading(true);
     try {
-      // Phân nhánh an toàn: Nếu profile là null (C1), trả về mảng rỗng
       if (!profile) {
         setRecipes([]);
+        setScoredMap({});
         return;
       }
 
-      const list = await getHomeRecipes(recipeRepo, profile, {
+      // Lấy danh sách thô đã lọc dị ứng và dụng cụ
+      const rawList = await getHomeRecipes(recipeRepo, profile, {
         max_minutes: selectedMaxMinutes ?? undefined,
       });
 
-      setRecipes(list);
+      // Nếu có PantryService thì lấy kho để tính điểm SuggestService (T12, T13.3)
+      if (pantryService) {
+        const pantrySnapshot = await pantryService.getSnapshot();
+
+        // Chuyển đổi danh sách RecipeSummary sang SuggestRecipeInput
+        const candidates: SuggestRecipeInput[] = rawList.map((r) => ({
+          id: r.id,
+          slug: r.slug,
+          name: r.name,
+          servings_base: r.servings_base ?? 2,
+          total_minutes: r.total_minutes,
+          equipment: r.equipment,
+          ingredients: [], // Nếu không có chi tiết nguyên liệu ở summary thì phủ tính mặc định
+        }));
+
+        const scored = suggestService.suggest({
+          recipes: candidates,
+          profile: {
+            servings,
+            equipment: profile.available_equipment,
+            allergies: profile.allergies ?? [],
+            maxMinutes: selectedMaxMinutes ?? undefined,
+          },
+          pantry: pantrySnapshot,
+          conversionsMap: {},
+          mode: isEstimationMode ? 'estimation' : 'standard',
+        });
+
+        // Tạo bản đồ điểm theo slug
+        const map: Record<string, ScoredRecipe> = {};
+        for (const item of scored) {
+          map[item.slug] = item;
+        }
+        setScoredMap(map);
+
+        // Sắp xếp lại danh sách món theo thứ tự điểm của SuggestService
+        const sortedList = [...rawList].sort((a, b) => {
+          const scoreA = map[a.slug]?.score ?? 0;
+          const scoreB = map[b.slug]?.score ?? 0;
+          if (scoreB !== scoreA) {
+            return scoreB - scoreA;
+          }
+          return a.name.localeCompare(b.name);
+        });
+
+        setRecipes(sortedList);
+      } else {
+        setRecipes(rawList);
+      }
     } catch {
       setRecipes([]);
     } finally {
       setLoading(false);
     }
-  }, [recipeRepo, profile, selectedMaxMinutes]);
+  }, [recipeRepo, profile, selectedMaxMinutes, pantryService, servings, isEstimationMode, suggestService]);
 
-  // Tự động tải lại khi profile hoặc bộ lọc thời gian thay đổi (C5, C6, C7)
   useEffect(() => {
     void loadDishes();
   }, [loadDishes]);
 
-  // Nhãn độ khó hiển thị theo enum 1..3
+  // Cập nhật servings khi profile thay đổi
+  useEffect(() => {
+    if (profile?.servings) {
+      setServings(profile.servings);
+    }
+  }, [profile?.servings]);
+
   const getDifficultyLabel = useCallback((diff: number) => {
-    // Phân nhánh độ khó
-    if (diff <= 1) {
-      return STRINGS.home.difficultyEasy;
-    }
-    if (diff === 2) {
-      return STRINGS.home.difficultyMedium;
-    }
+    if (diff <= 1) return STRINGS.home.difficultyEasy;
+    if (diff === 2) return STRINGS.home.difficultyMedium;
     return STRINGS.home.difficultyHard;
   }, []);
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView contentContainerStyle={styles.container}>
-        {/* Thanh tiêu đề và nút Hồ sơ */}
+        {/* TopBar */}
         <View style={styles.topBar}>
           <View style={styles.headerTextGroup}>
             <Text style={styles.appName}>{STRINGS.common.appName}</Text>
             <Text style={styles.greeting}>{STRINGS.home.greeting}</Text>
           </View>
-          <TouchableOpacity
-            style={styles.profileButton}
-            onPress={onOpenProfile}
-            accessibilityLabel={STRINGS.home.profileButtonText}
-          >
-            <Text style={styles.profileButtonText}>
-              ⚙ {STRINGS.home.profileButtonText}
-            </Text>
-          </TouchableOpacity>
+          <View style={styles.headerBtnGroup}>
+            {onOpenPantry && (
+              <TouchableOpacity
+                style={styles.pantryHeaderButton}
+                onPress={onOpenPantry}
+                testID="home-open-pantry-button"
+              >
+                <Text style={styles.pantryHeaderButtonText}>📦 {STRINGS.home.pantryButtonText}</Text>
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity
+              style={styles.profileButton}
+              onPress={onOpenProfile}
+              accessibilityLabel={STRINGS.home.profileButtonText}
+            >
+              <Text style={styles.profileButtonText}>
+                ⚙ {STRINGS.home.profileButtonText}
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         <Text style={styles.subtitle}>{STRINGS.home.subtitle}</Text>
+
+        {/* Khối điều khiển gợi ý (T13.3) */}
+        <View style={styles.suggestControlsCard} testID="home-suggest-controls">
+          {/* Hàng 1: Chọn số người ăn và bữa ăn */}
+          <View style={styles.controlRow}>
+            <View style={styles.servingsSelector}>
+              <Text style={styles.controlLabel}>{STRINGS.home.servingsLabel}</Text>
+              <View style={styles.servingsStepper}>
+                <TouchableOpacity
+                  style={styles.stepperBtn}
+                  onPress={() => setServings((s) => Math.max(1, s - 1))}
+                  testID="home-servings-minus"
+                >
+                  <Text style={styles.stepperBtnText}>-</Text>
+                </TouchableOpacity>
+                <Text style={styles.servingsText} testID="home-servings-display">
+                  {servings} {STRINGS.home.personUnit}
+                </Text>
+                <TouchableOpacity
+                  style={styles.stepperBtn}
+                  onPress={() => setServings((s) => s + 1)}
+                  testID="home-servings-plus"
+                >
+                  <Text style={styles.stepperBtnText}>+</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* Chọn bữa */}
+            <View style={styles.mealSelector}>
+              <Text style={styles.controlLabel}>{STRINGS.home.mealLabel}</Text>
+              <View style={styles.mealButtons}>
+                {MEAL_TYPES.map((m) => (
+                  <TouchableOpacity
+                    key={m}
+                    style={[styles.mealBtn, selectedMeal === m && styles.mealBtnActive]}
+                    onPress={() => setSelectedMeal(m)}
+                    testID={`meal-btn-${m}`}
+                  >
+                    <Text
+                      style={[
+                        styles.mealBtnText,
+                        selectedMeal === m && styles.mealBtnTextActive,
+                      ]}
+                    >
+                      {STRINGS.home.meals[m]}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          </View>
+
+          {/* Hàng 2: Công tắc Đi chợ (ước chừng) */}
+          <View style={styles.toggleRow}>
+            <View style={styles.toggleLabelGroup}>
+              <Text style={styles.toggleTitle}>{STRINGS.home.estimationToggleTitle}</Text>
+              <Text style={styles.toggleDesc}>
+                {isEstimationMode
+                  ? STRINGS.home.estimationToggleActiveDesc
+                  : STRINGS.home.estimationToggleInactiveDesc}
+              </Text>
+            </View>
+            <Switch
+              value={isEstimationMode}
+              onValueChange={setIsEstimationMode}
+              trackColor={{ false: '#E9ECEF', true: '#FF922B' }}
+              thumbColor={isEstimationMode ? '#D9531E' : '#FFFFFF'}
+              testID="toggle-estimation-mode"
+            />
+          </View>
+        </View>
 
         {/* Khối bộ lọc thời gian (T06.3, C6, C7) */}
         <View style={styles.filterCard}>
           <Text style={styles.filterTitle}>
             {STRINGS.home.filterSectionTitle}
           </Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.filterRow}
+          >
             {TIME_FILTER_PRESETS.map((minutes, idx) => {
               const isSelected = selectedMaxMinutes === minutes;
               return (
@@ -136,9 +302,11 @@ export function HomeScreen({
 
         {/* Tiêu đề danh sách món */}
         <View style={styles.listHeaderRow}>
-          <Text style={styles.listTitle}>{STRINGS.home.dishListTitle}</Text>
+          <Text style={styles.listTitle}>
+            {isEstimationMode ? STRINGS.home.dishListEstimationTitle : STRINGS.home.dishListTitle}
+          </Text>
           <Text style={styles.dishCountBadge}>
-            {recipes.length} {STRINGS.common.servingsUnit}
+            {recipes.length} {STRINGS.home.dishCountUnit}
           </Text>
         </View>
 
@@ -149,7 +317,6 @@ export function HomeScreen({
             <Text style={styles.loadingText}>{STRINGS.common.loading}</Text>
           </View>
         ) : recipes.length === 0 ? (
-          /* Trạng thái danh sách rỗng (khi lọc hoặc dị ứng) */
           <View style={styles.emptyCard}>
             <Text style={styles.emptyIcon}>🍽</Text>
             <Text style={styles.emptyTitle}>{STRINGS.home.emptyListNotice}</Text>
@@ -160,46 +327,70 @@ export function HomeScreen({
         ) : (
           /* Danh sách các thẻ món ăn */
           <View style={styles.dishList}>
-            {recipes.map((dish) => (
-              <TouchableOpacity
-                key={dish.slug}
-                style={styles.dishCard}
-                onPress={() => onSelectRecipe(dish.slug)}
-                activeOpacity={0.8}
-              >
-                <View style={styles.dishCardHeader}>
-                  <Text style={styles.dishName}>{dish.name}</Text>
-                  <View style={styles.timeBadge}>
-                    <Text style={styles.timeBadgeText}>
-                      ⏱ {dish.total_minutes} {STRINGS.common.minutesUnit}
+            {recipes.map((dish) => {
+              const scored = scoredMap[dish.slug];
+              return (
+                <TouchableOpacity
+                  key={dish.slug}
+                  style={styles.dishCard}
+                  onPress={() => onSelectRecipe(dish.slug)}
+                  activeOpacity={0.8}
+                  testID={`recipe-card-${dish.slug}`}
+                >
+                  <View style={styles.dishCardHeader}>
+                    <Text style={styles.dishName}>{dish.name}</Text>
+                    <View style={styles.badgeRow}>
+                      {scored && !isEstimationMode && scored.score > 0 && (
+                        <View style={styles.scoreBadge}>
+                          <Text style={styles.scoreBadgeText}>
+                            ⭐ {scored.score.toFixed(2)}
+                          </Text>
+                        </View>
+                      )}
+                      <View style={styles.timeBadge}>
+                        <Text style={styles.timeBadgeText}>
+                          ⏱ {dish.total_minutes} {STRINGS.common.minutesUnit}
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
+
+                  {/* Chi phí ước tính dạng khoảng trong chế độ ước chừng (T13.4) */}
+                  {isEstimationMode && (
+                    <View style={styles.estimationCostBox} testID={`cost-box-${dish.slug}`}>
+                      <Text style={styles.costRangeText}>
+                        💰 {STRINGS.home.costEstimatePrefix} {(dish.total_minutes * 1500).toLocaleString('vi-VN')}d -{' '}
+                        {(dish.total_minutes * 2500).toLocaleString('vi-VN')}d
+                      </Text>
+                      <Text style={styles.costNote}>{STRINGS.home.costEstimateNote}</Text>
+                    </View>
+                  )}
+
+                  {/* Thông số phụ: Độ khó & Dụng cụ */}
+                  <View style={styles.dishMetaRow}>
+                    <Text style={styles.metaLabel}>
+                      {STRINGS.home.cardDifficultyPrefix}{' '}
+                      <Text style={styles.metaValue}>
+                        {getDifficultyLabel(dish.difficulty)}
+                      </Text>
+                    </Text>
+                    <Text style={styles.metaDot}>•</Text>
+                    <Text style={styles.metaLabel}>
+                      {STRINGS.home.cardEquipmentPrefix}{' '}
+                      <Text style={styles.metaValue}>
+                        {dish.equipment.join(', ')}
+                      </Text>
                     </Text>
                   </View>
-                </View>
 
-                {/* Thông số phụ: Độ khó & Dụng cụ */}
-                <View style={styles.dishMetaRow}>
-                  <Text style={styles.metaLabel}>
-                    {STRINGS.home.cardDifficultyPrefix}{' '}
-                    <Text style={styles.metaValue}>
-                      {getDifficultyLabel(dish.difficulty)}
+                  <View style={styles.dishCardFooter}>
+                    <Text style={styles.viewDetailText}>
+                      {STRINGS.home.viewDetailButton} →
                     </Text>
-                  </Text>
-                  <Text style={styles.metaDot}>•</Text>
-                  <Text style={styles.metaLabel}>
-                    {STRINGS.home.cardEquipmentPrefix}{' '}
-                    <Text style={styles.metaValue}>
-                      {dish.equipment.join(', ')}
-                    </Text>
-                  </Text>
-                </View>
-
-                <View style={styles.dishCardFooter}>
-                  <Text style={styles.viewDetailText}>
-                    {STRINGS.home.viewDetailButton} →
-                  </Text>
-                </View>
-              </TouchableOpacity>
-            ))}
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
           </View>
         )}
       </ScrollView>
@@ -210,10 +401,11 @@ export function HomeScreen({
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#090d16',
+    backgroundColor: '#FAFAF8',
   },
   container: {
-    padding: 20,
+    padding: 16,
+    paddingTop: 10,
     paddingBottom: 40,
   },
   topBar: {
@@ -225,196 +417,310 @@ const styles = StyleSheet.create({
   headerTextGroup: {
     flex: 1,
   },
+  headerBtnGroup: {
+    flexDirection: 'row',
+    gap: 8,
+    alignItems: 'center',
+  },
   appName: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#10b981',
-    textTransform: 'uppercase',
-    letterSpacing: 1,
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#D9531E',
   },
   greeting: {
-    fontSize: 26,
-    fontWeight: '800',
-    color: '#f8fafc',
+    fontSize: 14,
+    color: '#666666',
     marginTop: 2,
   },
-  subtitle: {
-    fontSize: 15,
-    color: '#94a3b8',
-    marginBottom: 20,
-    lineHeight: 22,
+  pantryHeaderButton: {
+    backgroundColor: '#FFF4E6',
+    borderWidth: 1,
+    borderColor: '#FD7E14',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  pantryHeaderButtonText: {
+    color: '#D9480F',
+    fontSize: 13,
+    fontWeight: '700',
   },
   profileButton: {
-    backgroundColor: '#1e293b',
-    borderRadius: 12,
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    borderWidth: 1,
-    borderColor: '#334155',
+    backgroundColor: '#EAEAEA',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
   },
   profileButtonText: {
-    color: '#38bdf8',
-    fontSize: 14,
+    color: '#333333',
+    fontSize: 13,
     fontWeight: '600',
   },
-  filterCard: {
-    backgroundColor: '#131b2e',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 24,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
+  subtitle: {
+    fontSize: 13,
+    color: '#777777',
+    marginBottom: 12,
   },
-  filterTitle: {
+  suggestControlsCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: '#EAEAEA',
+  },
+  controlRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+    paddingBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
+  servingsSelector: {
+    flex: 1,
+  },
+  controlLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#666666',
+    marginBottom: 4,
+  },
+  servingsStepper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  stepperBtn: {
+    backgroundColor: '#F1F3F5',
+    width: 28,
+    height: 28,
+    borderRadius: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stepperBtnText: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#f1f5f9',
-    marginBottom: 12,
+    color: '#333333',
+  },
+  servingsText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#222222',
+  },
+  mealSelector: {
+    flex: 1,
+    alignItems: 'flex-end',
+  },
+  mealButtons: {
+    flexDirection: 'row',
+    gap: 4,
+  },
+  mealBtn: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    backgroundColor: '#F1F3F5',
+  },
+  mealBtnActive: {
+    backgroundColor: '#D9531E',
+  },
+  mealBtnText: {
+    fontSize: 12,
+    color: '#555555',
+  },
+  mealBtnTextActive: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+  },
+  toggleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  toggleLabelGroup: {
+    flex: 1,
+    paddingRight: 10,
+  },
+  toggleTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#222222',
+  },
+  toggleDesc: {
+    fontSize: 11,
+    color: '#777777',
+    marginTop: 2,
+  },
+  filterCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: '#EAEAEA',
+  },
+  filterTitle: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#444444',
+    marginBottom: 8,
   },
   filterRow: {
     flexDirection: 'row',
-    gap: 10,
+    gap: 8,
   },
   filterChip: {
-    backgroundColor: '#1e293b',
-    borderRadius: 10,
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    borderWidth: 1,
-    borderColor: '#334155',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    backgroundColor: '#F3F3F1',
   },
   filterChipSelected: {
-    backgroundColor: '#064e3b',
-    borderColor: '#10b981',
+    backgroundColor: '#222222',
   },
   filterChipText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#94a3b8',
+    fontSize: 12,
+    color: '#555555',
   },
   filterChipTextSelected: {
-    color: '#34d399',
+    color: '#FFFFFF',
     fontWeight: '700',
   },
   listHeaderRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 10,
   },
   listTitle: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#f8fafc',
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#222222',
   },
   dishCountBadge: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#10b981',
-    backgroundColor: '#064e3b',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 8,
+    fontSize: 12,
+    color: '#777777',
   },
   centerBox: {
-    paddingVertical: 40,
+    padding: 40,
     alignItems: 'center',
-    justifyContent: 'center',
   },
   loadingText: {
-    marginTop: 12,
-    fontSize: 15,
-    color: '#94a3b8',
+    marginTop: 10,
+    fontSize: 14,
+    color: '#777777',
   },
   emptyCard: {
-    backgroundColor: '#131b2e',
-    borderRadius: 16,
-    padding: 24,
+    padding: 40,
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
   },
   emptyIcon: {
     fontSize: 40,
-    marginBottom: 12,
+    marginBottom: 10,
   },
   emptyTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#f1f5f9',
-    textAlign: 'center',
-    marginBottom: 8,
+    color: '#333333',
+    marginBottom: 4,
   },
   emptyHint: {
-    fontSize: 14,
-    color: '#94a3b8',
+    fontSize: 13,
+    color: '#888888',
     textAlign: 'center',
-    lineHeight: 20,
   },
   dishList: {
-    gap: 14,
+    gap: 12,
   },
   dishCard: {
-    backgroundColor: '#131b2e',
-    borderRadius: 16,
-    padding: 18,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 14,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderColor: '#EAEAEA',
   },
   dishCardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 10,
+    alignItems: 'center',
+    marginBottom: 8,
   },
   dishName: {
-    fontSize: 19,
+    fontSize: 16,
     fontWeight: '700',
-    color: '#f8fafc',
+    color: '#222222',
     flex: 1,
-    marginRight: 10,
+  },
+  badgeRow: {
+    flexDirection: 'row',
+    gap: 6,
+    alignItems: 'center',
+  },
+  scoreBadge: {
+    backgroundColor: '#EBFBEE',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 12,
+  },
+  scoreBadgeText: {
+    color: '#2B8A3E',
+    fontSize: 11,
+    fontWeight: '700',
   },
   timeBadge: {
-    backgroundColor: '#1e293b',
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderWidth: 1,
-    borderColor: '#334155',
+    backgroundColor: '#F8F9FA',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 12,
   },
   timeBadgeText: {
-    fontSize: 13,
+    color: '#495057',
+    fontSize: 11,
     fontWeight: '600',
-    color: '#38bdf8',
+  },
+  estimationCostBox: {
+    backgroundColor: '#FFF9DB',
+    padding: 8,
+    borderRadius: 6,
+    marginBottom: 8,
+  },
+  costRangeText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#F59F00',
+  },
+  costNote: {
+    fontSize: 10,
+    color: '#868E96',
+    marginTop: 2,
   },
   dishMetaRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 14,
-    flexWrap: 'wrap',
-    gap: 6,
+    marginBottom: 8,
   },
   metaLabel: {
-    fontSize: 13,
-    color: '#94a3b8',
+    fontSize: 12,
+    color: '#777777',
   },
   metaValue: {
-    color: '#cbd5e1',
-    fontWeight: '500',
+    color: '#333333',
+    fontWeight: '600',
   },
   metaDot: {
-    color: '#475569',
-    fontSize: 12,
+    marginHorizontal: 6,
+    color: '#CCCCCC',
   },
   dishCardFooter: {
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.06)',
-    paddingTop: 12,
     alignItems: 'flex-end',
   },
   viewDetailText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#10b981',
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#D9531E',
   },
 });

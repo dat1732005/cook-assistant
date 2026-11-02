@@ -28,6 +28,13 @@ export * from './db/index.js';
 // Xuất bộ hẹn giờ và tính toán thời gian thuần (T08)
 export * from './timer/index.js';
 
+// Xuất nghiệp vụ Thêm nhanh nguyên liệu vào kho (T11)
+export * from './pantry/quick-add.js';
+
+// Xuất dịch vụ gợi ý món ăn và cấu hình trọng số (T12)
+export * from './suggest/weights-config.js';
+export * from './suggest/suggest-service.js';
+
 /**
  * Hàm chào mẫu kiểm tra liên kết hệ thống (giữ lại từ T01 để tương thích ngược).
  *

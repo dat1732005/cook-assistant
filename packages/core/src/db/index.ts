@@ -6,4 +6,5 @@ export * from './recipe-repo.js';
 export * from './profile-repo.js';
 export * from './home-service.js';
 export * from './session-service.js';
+export * from './pantry-service.js';
 export * from './node-driver.js';

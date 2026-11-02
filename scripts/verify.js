@@ -45,6 +45,10 @@ const EXPECTED_HASH_CATALOG = {
     normalizedSha256: '52249c8a73f4ab4f7b8acadda9f488f65496c74d6da09c7207c299c5ba07b9b1',
     rawSha256: '105ef771f1630ffc29fa9c12e92eda54f62d52be307865802af0f371b2e2c30f',
   },
+  'T10.md': {
+    description: 'Kỳ vọng PantryService & SuggestService T10-T13',
+    normalizedSha256: '26f81826785140b398db511a508645e5fd67d70b03a85766dcc25662d44e16ac',
+  },
   'README.md': {
     description: 'Mô tả thư mục expected',
     normalizedSha256: '80e5d54528255fd0bbaf24e647f4b219f3a81b1522dc2a5c6f05111e556f140c',
