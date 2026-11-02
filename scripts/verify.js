@@ -19,7 +19,7 @@ import { pathToFileURL } from 'node:url';
 // ==========================================
 const EXIT_SUCCESS = 0;
 const EXIT_FAILURE = 1;
-const TOTAL_VERIFY_STEPS = 7;
+const TOTAL_VERIFY_STEPS = 8;
 
 /**
  * Bản đồ mã băm SHA-256 đã duyệt của toàn bộ tệp trong docs/expected/.
@@ -39,6 +39,11 @@ const EXPECTED_HASH_CATALOG = {
     description: 'Kỳ vọng Màn hình & Scaling T06',
     normalizedSha256: 'b598a846a16aafee084b573f55a03d80166275f8edf3a11e31d5eb557c57cd32',
     rawSha256: '5c1d8a73501061b07bf55b164601912786f1ee00ffc11cb798cad593bec8e115',
+  },
+  'T07.md': {
+    description: 'Kỳ vọng Session & Timer T07',
+    normalizedSha256: '52249c8a73f4ab4f7b8acadda9f488f65496c74d6da09c7207c299c5ba07b9b1',
+    rawSha256: '105ef771f1630ffc29fa9c12e92eda54f62d52be307865802af0f371b2e2c30f',
   },
   'README.md': {
     description: 'Mô tả thư mục expected',
@@ -85,11 +90,12 @@ function resolvePythonCommand() {
  * runCommand('pnpm', ['-r', 'run', 'typecheck'], false)
  * // -> { success: true, code: 0, stdout: "...", stderr: "" }
  */
-function runCommand(command, args, verbose) {
+function runCommand(command, args, verbose, cwd) {
   const result = spawnSync(command, args, {
     shell: true,
     encoding: 'utf-8',
     stdio: verbose ? 'inherit' : 'pipe',
+    cwd: cwd || process.cwd(),
   });
 
   const statusCode = result.status ?? EXIT_FAILURE;
@@ -100,6 +106,58 @@ function runCommand(command, args, verbose) {
     code: statusCode,
     stdout: result.stdout || '',
     stderr: result.stderr || '',
+  };
+}
+
+/**
+ * Kiểm tra xuất bản bundle Android production và quét rò rỉ dữ liệu giả lập (Phần 0).
+ * @param {boolean} verbose
+ * @returns {{ success: boolean; errors: string[] }}
+ */
+function verifyProductionBundle(verbose) {
+  const mobileDir = path.resolve(process.cwd(), 'apps', 'mobile');
+  const distDir = path.join(mobileDir, 'dist');
+
+  // Xóa thư mục dist cũ nếu tồn tại
+  if (fs.existsSync(distDir)) {
+    fs.rmSync(distDir, { recursive: true, force: true });
+  }
+
+  // Chạy npx expo export --platform android
+  const exportRes = runCommand('npx', ['expo', 'export', '--platform', 'android'], verbose, mobileDir);
+  if (!exportRes.success) {
+    return {
+      success: false,
+      errors: ['Lệnh expo export thất bại: ' + (exportRes.stderr || exportRes.stdout)],
+    };
+  }
+
+  const forbiddenTokens = ['synthetic', 'fx-', 'DEV_DATA_BUNDLE'];
+  const errors = [];
+
+  function scanDir(dir) {
+    if (!fs.existsSync(dir)) return;
+    const entries = fs.readdirSync(dir, { withFileTypes: true });
+    for (const entry of entries) {
+      const fullPath = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        scanDir(fullPath);
+      } else {
+        const buf = fs.readFileSync(fullPath);
+        for (const token of forbiddenTokens) {
+          if (buf.includes(Buffer.from(token))) {
+            errors.push(`Rò rỉ chuỗi cấm "${token}" trong bản production: ${entry.name}`);
+          }
+        }
+      }
+    }
+  }
+
+  scanDir(distDir);
+
+  return {
+    success: errors.length === 0,
+    errors,
   };
 }
 
@@ -291,9 +349,29 @@ export function runVerify(options = {}) {
   const hashCheckRes = verifyExpectedHashes();
   stepResults.push({
     index: 7,
-    name: 'Mã băm docs/expected/ (4 tệp)',
+    name: `Mã băm docs/expected/ (${Object.keys(EXPECTED_HASH_CATALOG).length} tệp)`,
     success: hashCheckRes.success,
   });
+
+  // ==========================================
+  // BƯỚC 8: Xuất bản Production & quét dữ liệu giả lập (Phần 0)
+  // ==========================================
+  const lastStepOk7 = stepResults[stepResults.length - 1]?.success;
+  if (lastStepOk7) {
+    const prodRes = verifyProductionBundle(verbose);
+    stepResults.push({
+      index: 8,
+      name: 'Xuất production sạch rác giả (expo export)',
+      success: prodRes.success,
+    });
+  } else {
+    stepResults.push({
+      index: 8,
+      name: 'Xuất production sạch rác giả (expo export)',
+      success: false,
+      skipped: true,
+    });
+  }
 
   // ==========================================
   // IN TỐI ĐA 10 DÒNG TỔNG KẾT THEO YÊU CẦU
