@@ -39,7 +39,7 @@ describe('T17: AiClient trong ứng dụng di động', () => {
 
     expect(mockFetch).toHaveBeenCalledTimes(1);
     const callArgs = mockFetch.mock.calls[0];
-    expect(callArgs[1].headers['X-Device-Id']).toBe('test-device-uuid-1234');
+    expect(callArgs?.[1].headers['X-Device-Id']).toBe('test-device-uuid-1234');
   });
 
   it('Quá giới hạn 429: trả về mã RATE_LIMIT và retryAfter từ header', async () => {
