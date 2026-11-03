@@ -35,6 +35,9 @@ export * from './pantry/quick-add.js';
 export * from './suggest/weights-config.js';
 export * from './suggest/suggest-service.js';
 
+// Xuất dịch vụ kiểm tra an toàn thực phẩm (T16)
+export * from './safety/safety-service.js';
+
 /**
  * Hàm chào mẫu kiểm tra liên kết hệ thống (giữ lại từ T01 để tương thích ngược).
  *
