@@ -53,6 +53,10 @@ const EXPECTED_HASH_CATALOG = {
     description: 'Kỳ vọng Chế độ ước chừng T12 bổ sung',
     normalizedSha256: '5ad30427e5299d96ff40ba916e8e37d50ca5d090ac29fd2be0e6bbe618406ede',
   },
+  'T14.md': {
+    description: 'Kỳ vọng Backend & AI T14-T15',
+    normalizedSha256: 'c8b482d691e684fc098e27c2b691ece633d6a79fb4040e055e663fd8e3b859ff',
+  },
   'README.md': {
     description: 'Mô tả thư mục expected',
     normalizedSha256: '80e5d54528255fd0bbaf24e647f4b219f3a81b1522dc2a5c6f05111e556f140c',
