@@ -35,6 +35,18 @@ public class GlobalExceptionHandler {
                 .body(new ErrorResponse("VALIDATION_ERROR", msg));
     }
 
+    @ExceptionHandler(AiBadResponseException.class)
+    public ResponseEntity<ErrorResponse> handleAiBadResponse(AiBadResponseException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
+                .body(new ErrorResponse("AI_BAD_RESPONSE", ex.getMessage()));
+    }
+
+    @ExceptionHandler(AiTimeoutException.class)
+    public ResponseEntity<ErrorResponse> handleAiTimeout(AiTimeoutException ex) {
+        return ResponseEntity.status(HttpStatus.GATEWAY_TIMEOUT)
+                .body(new ErrorResponse("AI_TIMEOUT", ex.getMessage()));
+    }
+
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ErrorResponse> handleIllegalArgument(IllegalArgumentException ex) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
