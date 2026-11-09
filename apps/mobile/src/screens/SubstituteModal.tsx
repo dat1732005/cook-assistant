@@ -29,6 +29,7 @@ import {
   formatAiMockNotice,
   SubstituteResultData,
 } from '../services/ai-client.js';
+import type { TelemetryService } from '../services/telemetry-service.js';
 
 export interface SubstituteModalProps {
   visible: boolean;
@@ -37,6 +38,8 @@ export interface SubstituteModalProps {
   userAllergies?: string[];
   ingredientAllergenMap?: Record<string, string[]>;
   aiClient?: AiClient;
+  telemetryService?: TelemetryService;
+  sessionId?: string;
   onApplySubstitute?: (ingredient: string, action: 'omit' | 'substitute', replacement?: string) => void;
 }
 
@@ -47,6 +50,8 @@ export function SubstituteModal({
   userAllergies = [],
   ingredientAllergenMap = {},
   aiClient = defaultAiClient,
+  telemetryService,
+  sessionId,
   onApplySubstitute,
 }: SubstituteModalProps): React.JSX.Element {
   const [selectedIngredient, setSelectedIngredient] = useState<string>(
@@ -58,6 +63,8 @@ export function SubstituteModal({
   const [isAiMock, setIsAiMock] = useState<boolean>(false);
   const [selectedSuggestion, setSelectedSuggestion] = useState<string | null>(null);
   const [feedbackSent, setFeedbackSent] = useState<boolean>(false);
+  const [helpfulMarked, setHelpfulMarked] = useState<boolean | null>(null);
+  const [aiTelemetryEventId, setAiTelemetryEventId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // Tìm nguyên liệu được chọn trong công thức
@@ -93,9 +100,22 @@ export function SubstituteModal({
     setLoading(true);
     setErrorMessage(null);
     setFeedbackSent(false);
+    setHelpfulMarked(null);
+    setAiTelemetryEventId(null);
     setIsAiMock(false);
 
     try {
+      // Ghi nhận lượt hỏi AI thay nguyên liệu ẩn danh (tuyệt đối không gửi tên nguyên liệu/dị ứng trong telemetry)
+      if (telemetryService) {
+        const telemetryEvt = await telemetryService.recordAiAsked({
+          sessionId,
+          recipeSlug: recipe.slug,
+          aiKind: 'substitute',
+        });
+        setAiTelemetryEventId(telemetryEvt?.eventId ?? null);
+        void telemetryService.flushPendingEvents();
+      }
+
       const res = await aiClient.substitute({
         recipeId: recipe.slug || 'recipe',
         action,
@@ -127,6 +147,8 @@ export function SubstituteModal({
   }, [
     isPreservationRole,
     hasAllergyConflict,
+    telemetryService,
+    sessionId,
     aiClient,
     recipe.slug,
     recipe.ingredients,
@@ -137,8 +159,22 @@ export function SubstituteModal({
     ingredientAllergenMap,
   ]);
 
-  // Báo cáo câu trả lời sai (T18.4)
+  // Đánh dấu câu trả lời AI hữu ích (T19.1)
+  const handleMarkHelpful = useCallback(async () => {
+    setHelpfulMarked(true);
+    if (telemetryService && aiTelemetryEventId) {
+      await telemetryService.updateAiHelpful(aiTelemetryEventId, true);
+      void telemetryService.flushPendingEvents();
+    }
+  }, [telemetryService, aiTelemetryEventId]);
+
+  // Báo cáo câu trả lời sai (T18.4, T19.1)
   const handleReportWrongAnswer = useCallback(async () => {
+    setHelpfulMarked(false);
+    if (telemetryService && aiTelemetryEventId) {
+      await telemetryService.updateAiHelpful(aiTelemetryEventId, false);
+      void telemetryService.flushPendingEvents();
+    }
     try {
       await aiClient.reportFeedback({
         ingredientId: selectedIngredient,
@@ -150,7 +186,7 @@ export function SubstituteModal({
       setFeedbackSent(true);
       Alert.alert('Ghi nhận', 'Đã ghi nhận phản hồi câu trả lời sai.');
     }
-  }, [aiClient, selectedIngredient]);
+  }, [aiClient, selectedIngredient, telemetryService, aiTelemetryEventId]);
 
   // Áp dụng thay/bỏ nguyên liệu
   const handleConfirm = useCallback(() => {
@@ -329,16 +365,32 @@ export function SubstituteModal({
                   ⚠️ Trợ lý AI có thể mắc lỗi. Vui lòng cân nhắc kỹ thói quen ẩm thực của bạn.
                 </Text>
 
-                {/* NÚT CÂU TRẢ LỜI SAI (T18.4) */}
-                <TouchableOpacity
-                  style={[styles.wrongAnswerButton, feedbackSent && styles.wrongAnswerButtonDisabled]}
-                  onPress={handleReportWrongAnswer}
-                  disabled={feedbackSent}
-                >
-                  <Text style={styles.wrongAnswerButtonText}>
-                    {feedbackSent ? '✓ Đã ghi nhận phản hồi' : '👎 Câu trả lời sai'}
-                  </Text>
-                </TouchableOpacity>
+                {/* Đánh giá hữu ích & nút Câu trả lời sai (T18.4, T19.1) */}
+                <View style={styles.feedbackRow}>
+                  <TouchableOpacity
+                    style={[
+                      styles.helpfulButton,
+                      helpfulMarked === true && styles.helpfulButtonSelected,
+                    ]}
+                    onPress={handleMarkHelpful}
+                    disabled={helpfulMarked !== null}
+                    testID="substitute-helpful-button"
+                  >
+                    <Text style={styles.helpfulButtonText}>
+                      {helpfulMarked === true ? '✓ Đã chọn Hữu ích' : '👍 Hữu ích'}
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.wrongAnswerButton, feedbackSent && styles.wrongAnswerButtonDisabled]}
+                    onPress={handleReportWrongAnswer}
+                    disabled={feedbackSent}
+                    testID="substitute-wrong-button"
+                  >
+                    <Text style={styles.wrongAnswerButtonText}>
+                      {feedbackSent ? '✓ Đã ghi nhận phản hồi' : '👎 Câu trả lời sai'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
               </View>
             ) : null}
           </ScrollView>
@@ -619,6 +671,28 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#7c3aed',
     marginBottom: 6,
+  },
+  feedbackRow: {
+    flexDirection: 'row',
+    gap: 8,
+    alignItems: 'center',
+  },
+  helpfulButton: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#a7f3d0',
+    backgroundColor: '#ecfdf5',
+  },
+  helpfulButtonSelected: {
+    backgroundColor: '#d1fae5',
+    borderColor: '#10b981',
+  },
+  helpfulButtonText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#047857',
   },
   wrongAnswerButton: {
     paddingVertical: 6,

@@ -19,7 +19,8 @@ export type ScreenName =
   | 'Cook'
   | 'Finish'
   | 'QuickAdd'
-  | 'Pantry';
+  | 'Pantry'
+  | 'Settings';
 
 /** Cấu trúc một mục trong stack điều hướng */
 export interface NavigationRoute {

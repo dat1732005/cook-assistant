@@ -26,6 +26,7 @@ import {
 } from '@cook/core';
 import { STRINGS } from '../constants/strings.js';
 import { SubstituteModal } from './SubstituteModal.js';
+import type { TelemetryService } from '../services/telemetry-service.js';
 
 /** Giá trị phần ăn nhỏ nhất cho phép trên màn hình */
 const MIN_SERVINGS_LIMIT = 1;
@@ -36,6 +37,7 @@ export interface RecipeDetailScreenProps {
   userServings: number;
   onBack: () => void;
   onStartCooking?: (recipe?: RecipeDetail, servings?: number, mode?: OptimizationMode) => void;
+  telemetryService?: TelemetryService;
 }
 
 export function RecipeDetailScreen({
@@ -44,6 +46,7 @@ export function RecipeDetailScreen({
   userServings,
   onBack,
   onStartCooking,
+  telemetryService,
 }: RecipeDetailScreenProps): React.JSX.Element {
   const [recipe, setRecipe] = useState<RecipeDetail | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
@@ -362,6 +365,7 @@ export function RecipeDetailScreen({
           visible={substituteModalVisible}
           onClose={() => setSubstituteModalVisible(false)}
           recipe={recipe}
+          telemetryService={telemetryService}
         />
       ) : null}
     </SafeAreaView>

@@ -29,6 +29,7 @@ import { SessionService, type SessionSnapshot } from '@cook/core';
 import { useNavigation } from '../navigation/router.js';
 import { STRINGS } from '../constants/strings.js';
 import { AiClient, defaultAiClient, formatAiMockNotice } from '../services/ai-client.js';
+import type { TelemetryService } from '../services/telemetry-service.js';
 
 export interface CookScreenProps {
   recipe: Recipe;
@@ -37,6 +38,7 @@ export interface CookScreenProps {
   driver?: SqlDriver;
   serviceOverride?: SessionService;
   aiClient?: AiClient;
+  telemetryService?: TelemetryService;
   initialNow?: number;
 }
 
@@ -47,6 +49,7 @@ export function CookScreen({
   driver,
   serviceOverride,
   aiClient = defaultAiClient,
+  telemetryService,
   initialNow = 0,
 }: CookScreenProps): React.JSX.Element {
   const { navigate, goBack, replace } = useNavigation();
@@ -72,13 +75,29 @@ export function CookScreen({
     isMock?: boolean;
   } | null>(null);
   const [feedbackSent, setFeedbackSent] = useState<boolean>(false);
+  const [helpfulMarked, setHelpfulMarked] = useState<boolean | null>(null);
+  const [aiTelemetryEventId, setAiTelemetryEventId] = useState<string | null>(null);
 
   const handleAskAi = useCallback(async () => {
     if (!aiQuestion.trim()) return;
     setAiLoading(true);
     setFeedbackSent(false);
+    setHelpfulMarked(null);
+    setAiTelemetryEventId(null);
 
     try {
+      // Ghi nhận sự kiện hỏi AI ẩn danh cục bộ (tuyệt đối không gửi nội dung aiQuestion)
+      if (telemetryService) {
+        const telemetryEvt = await telemetryService.recordAiAsked({
+          sessionId: snapshot?.id,
+          recipeSlug: recipe.slug,
+          stepId: snapshot?.now_group[0],
+          aiKind: 'ask',
+        });
+        setAiTelemetryEventId(telemetryEvt?.eventId ?? null);
+        void telemetryService.flushPendingEvents();
+      }
+
       const res = await aiClient.ask({
         question: aiQuestion.trim(),
         currentStep: snapshot?.now_group[0],
@@ -95,7 +114,16 @@ export function CookScreen({
     } finally {
       setAiLoading(false);
     }
-  }, [aiClient, aiQuestion, snapshot]);
+  }, [aiClient, aiQuestion, snapshot, telemetryService, recipe.slug]);
+
+  // Đánh dấu câu trả lời AI hữu ích (T19.1)
+  const handleMarkHelpful = useCallback(async () => {
+    setHelpfulMarked(true);
+    if (telemetryService && aiTelemetryEventId) {
+      await telemetryService.updateAiHelpful(aiTelemetryEventId, true);
+      void telemetryService.flushPendingEvents();
+    }
+  }, [telemetryService, aiTelemetryEventId]);
 
   // Áp dụng hành động đề xuất từ AI (hẹn giờ chỉ đổi khi người dùng bấm) (T18.3)
   const handleApplyAiAction = useCallback(async () => {
@@ -110,6 +138,11 @@ export function CookScreen({
   }, [aiAnswer, snapshot, sessionService, currentTime]);
 
   const handleReportWrongAnswer = useCallback(async () => {
+    setHelpfulMarked(false);
+    if (telemetryService && aiTelemetryEventId) {
+      await telemetryService.updateAiHelpful(aiTelemetryEventId, false);
+      void telemetryService.flushPendingEvents();
+    }
     try {
       await aiClient.reportFeedback({
         question: aiQuestion,
@@ -120,7 +153,7 @@ export function CookScreen({
     } catch {
       setFeedbackSent(true);
     }
-  }, [aiClient, aiQuestion, aiAnswer]);
+  }, [aiClient, aiQuestion, aiAnswer, telemetryService, aiTelemetryEventId]);
 
   // Khởi tạo phiên nấu khi vào màn hình
   useEffect(() => {
@@ -135,6 +168,14 @@ export function CookScreen({
         });
         if (isMounted) {
           setSnapshot(snap);
+          // Ghi sự kiện bắt đầu phiên nấu ẩn danh (T19.1)
+          if (telemetryService) {
+            await telemetryService.recordSessionStarted({
+              sessionId: snap.id,
+              recipeSlug: recipe.slug,
+            });
+            void telemetryService.flushPendingEvents();
+          }
         }
       } catch (err: unknown) {
         // Nếu đã có phiên đang chạy thì cố gắng phục hồi
@@ -152,7 +193,7 @@ export function CookScreen({
     return () => {
       isMounted = false;
     };
-  }, [sessionService, recipe, servings, mode, initialNow]);
+  }, [sessionService, telemetryService, recipe, servings, mode, initialNow]);
 
   // Tìm đối tượng RecipeStep từ mã bước
   const getStep = useCallback(
@@ -204,12 +245,49 @@ export function CookScreen({
 
     setSnapshot(res.snapshot);
 
-    // Nếu toàn bộ món ăn đã hoàn tất -> chuyển sang FinishScreen
+    // Nếu toàn bộ món ăn đã hoàn tất -> ghi sự kiện hoàn tất và chuyển sang FinishScreen
     if (res.snapshot.session_status === 'done') {
+      if (telemetryService) {
+        await telemetryService.recordSessionCompleted({
+          sessionId: res.snapshot.id,
+          recipeSlug: recipe.slug,
+        });
+        void telemetryService.flushPendingEvents();
+      }
       navigate('Finish', {
         recipe,
         dishName: recipe.name,
+        sessionId: res.snapshot.id,
       });
+    }
+  };
+
+  // Xử lý người dùng bấm "Lùi bước" để quay lại bước đã hoàn thành gần nhất (T07.3, T19.1)
+  const completedOrWaitingStepIds = useMemo(() => {
+    if (!snapshot) return [];
+    return Object.entries(snapshot.step_states)
+      .filter(([, state]) => state === 'completed' || state === 'waiting')
+      .map(([id]) => id);
+  }, [snapshot]);
+
+  const handleStepBack = async () => {
+    const targetStepId =
+      completedOrWaitingStepIds[completedOrWaitingStepIds.length - 1];
+    if (!targetStepId) return;
+
+    try {
+      const updatedSnap = await sessionService.back(targetStepId, currentTime);
+      setSnapshot(updatedSnap);
+      if (telemetryService) {
+        await telemetryService.recordStepBack({
+          sessionId: updatedSnap.id,
+          recipeSlug: recipe.slug,
+          stepId: targetStepId,
+        });
+        void telemetryService.flushPendingEvents();
+      }
+    } catch (err: unknown) {
+      Alert.alert(STRINGS.common.error, String(err));
     }
   };
 
@@ -278,6 +356,14 @@ export function CookScreen({
           text: STRINGS.cook.abandonButton,
           style: 'destructive',
           onPress: async () => {
+            if (telemetryService) {
+              await telemetryService.recordSessionAbandoned({
+                sessionId: snapshot?.id,
+                recipeSlug: recipe.slug,
+                stepId: snapshot?.now_group[0],
+              });
+              void telemetryService.flushPendingEvents();
+            }
             await sessionService.abandon(currentTime);
             replace('Home');
           },
@@ -325,7 +411,20 @@ export function CookScreen({
         {/* NHÓM 1: BÂY GIỜ LÀM (NOW) */}
         {/* ======================================================== */}
         <View style={styles.groupContainer}>
-          <Text style={styles.groupTitle}>⚡ {STRINGS.cook.nowGroupTitle}</Text>
+          <View style={styles.groupHeaderRow}>
+            <Text style={styles.groupTitle}>⚡ {STRINGS.cook.nowGroupTitle}</Text>
+            {completedOrWaitingStepIds.length > 0 && (
+              <TouchableOpacity
+                style={styles.stepBackButton}
+                onPress={handleStepBack}
+                testID="cook-step-back-button"
+              >
+                <Text style={styles.stepBackButtonText}>
+                  ↺ {STRINGS.cook.stepBackButton}
+                </Text>
+              </TouchableOpacity>
+            )}
+          </View>
 
           {(!snapshot || snapshot.now_group.length === 0) && (
             <View style={styles.emptyGroupBox}>
@@ -572,16 +671,31 @@ export function CookScreen({
                 ⚠️ AI có thể mắc lỗi. Vui lòng kiểm tra lại trước khi thực hiện.
               </Text>
 
-              <TouchableOpacity
-                style={styles.wrongAnswerButton}
-                onPress={handleReportWrongAnswer}
-                disabled={feedbackSent}
-                testID="wrong-answer-button"
-              >
-                <Text style={styles.wrongAnswerText}>
-                  {feedbackSent ? '✓ Đã báo cáo' : '🚩 Câu trả lời sai'}
-                </Text>
-              </TouchableOpacity>
+              <View style={styles.aiFeedbackRow}>
+                <TouchableOpacity
+                  style={[
+                    styles.aiHelpfulButton,
+                    helpfulMarked === true && styles.aiHelpfulButtonSelected,
+                  ]}
+                  onPress={handleMarkHelpful}
+                  disabled={helpfulMarked !== null}
+                  testID="ask-helpful-button"
+                >
+                  <Text style={styles.aiHelpfulText}>
+                    {helpfulMarked === true ? `✓ ${STRINGS.ai.helpfulRecorded}` : `👍 ${STRINGS.ai.helpfulButton}`}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.wrongAnswerButton}
+                  onPress={handleReportWrongAnswer}
+                  disabled={feedbackSent}
+                  testID="wrong-answer-button"
+                >
+                  <Text style={styles.wrongAnswerText}>
+                    {feedbackSent ? '✓ Đã báo cáo' : '🚩 Câu trả lời sai'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
             </View>
           )}
         </View>
@@ -697,6 +811,25 @@ const styles = StyleSheet.create({
   },
   groupContainer: {
     marginBottom: 20,
+  },
+  groupHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
+  stepBackButton: {
+    backgroundColor: '#FFF7ED',
+    borderWidth: 1,
+    borderColor: '#FDBA74',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+  },
+  stepBackButtonText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#C2410C',
   },
   groupTitle: {
     fontSize: 16,
@@ -1054,6 +1187,28 @@ const styles = StyleSheet.create({
     color: '#64748B',
     fontStyle: 'italic',
     marginBottom: 8,
+  },
+  aiFeedbackRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  aiHelpfulButton: {
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 4,
+    backgroundColor: '#ECFDF5',
+    borderWidth: 1,
+    borderColor: '#A7F3D0',
+  },
+  aiHelpfulButtonSelected: {
+    backgroundColor: '#D1FAE5',
+    borderColor: '#10B981',
+  },
+  aiHelpfulText: {
+    fontSize: 12,
+    color: '#047857',
+    fontWeight: '600',
   },
   wrongAnswerButton: {
     alignSelf: 'flex-start',

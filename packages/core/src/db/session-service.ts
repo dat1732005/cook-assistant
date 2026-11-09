@@ -81,6 +81,7 @@ export class SessionService {
   private stepFinishTimes: Record<string, number> = {};
   private activeTimers: Map<string, RunningTimer> = new Map();
   private lastReplan?: ScheduledStep[];
+  private stepBackHistory: Array<{ stepId: string; at: number }> = [];
 
   constructor(driver?: SqlDriver) {
     this.driver = driver;
@@ -117,6 +118,7 @@ export class SessionService {
     this.stepFinishTimes = {};
     this.activeTimers.clear();
     this.lastReplan = undefined;
+    this.stepBackHistory = [];
 
     const recipeId =
       'id' in recipeOrSteps && typeof recipeOrSteps.id === 'string'
@@ -378,6 +380,118 @@ export class SessionService {
       snapshot: this.buildSnapshot(now),
       safetyResult: safetyCheck,
     };
+  }
+
+  /**
+   * Làm gì: Cho phép người nấu lùi lại bước trước và ghi nhận sự kiện lùi bước phục vụ đo lường (T07.3, T19.1).
+   * Vào: stepId (mã bước cần quay lại), now (mốc thời gian giả lập tính bằng giây).
+   * Ra: Promise<SessionSnapshot> cập nhật 3 nhóm (now, waiting, next) sau khi đưa bước về trạng thái chờ làm lại.
+   * Ví dụ: Bước A đã xong tại 100s -> gọi back('A', 120) đưa A về 'pending' và hiện lại trong now_group.
+   * Gọi bởi: CookScreen (nút lùi bước) và unit test SessionService.
+   */
+  async back(stepId: string, now: number): Promise<SessionSnapshot> {
+    // Chỉ cho phép lùi bước khi đang có phiên nấu mở
+    if (!this.currentSession || this.currentSession.status !== 'cooking') {
+      throw new Error('NO_ACTIVE_SESSION');
+    }
+
+    const step = this.currentSteps.find((s) => s.id === stepId);
+    // Báo lỗi rõ ràng nếu mã bước không tồn tại trong công thức hiện tại
+    if (!step) {
+      throw new Error(`Step ${stepId} not found`);
+    }
+
+    let targetStepId = stepId;
+    const currentState = this.currentSession.step_states[stepId];
+
+    // Phân nhánh: nếu bước truyền vào chưa làm ('pending'), tìm bước hoàn thành gần nhất để lùi về bước đó
+    if (currentState !== 'completed' && currentState !== 'waiting') {
+      const finishedEntries = Object.entries(this.stepFinishTimes).sort(
+        (a, b) => b[1] - a[1]
+      );
+      if (finishedEntries.length > 0 && finishedEntries[0]) {
+        targetStepId = finishedEntries[0][0];
+      } else {
+        const anyCompleted = Object.entries(this.currentSession.step_states).find(
+          ([, state]) => state === 'completed' || state === 'waiting'
+        );
+        if (anyCompleted) {
+          targetStepId = anyCompleted[0];
+        }
+      }
+    }
+
+    // Đưa bước mục tiêu về trạng thái chưa hoàn thành và xóa bộ đếm nền của bước đó (nếu có)
+    const stepsToRevert = new Set<string>([targetStepId]);
+    // Thu thập cả các bước phụ thuộc vào bước mục tiêu để bảo toàn thứ tự DAG
+    let expanded = true;
+    while (expanded) {
+      expanded = false;
+      for (const candidate of this.currentSteps) {
+        const dependsOnReverted = (candidate.after || []).some((dep) =>
+          stepsToRevert.has(dep)
+        );
+        const state = this.currentSession.step_states[candidate.id];
+        if (
+          dependsOnReverted &&
+          !stepsToRevert.has(candidate.id) &&
+          (state === 'completed' || state === 'waiting')
+        ) {
+          stepsToRevert.add(candidate.id);
+          expanded = true;
+        }
+      }
+    }
+
+    for (const revertId of stepsToRevert) {
+      this.currentSession.step_states[revertId] = 'pending';
+      delete this.stepFinishTimes[revertId];
+      this.activeTimers.delete(revertId);
+      this.activeTimers.delete(`timer_${revertId}`);
+    }
+
+    // Ghi nhận sự kiện lùi bước cục bộ theo T07.3
+    this.stepBackHistory.push({ stepId: targetStepId, at: now });
+
+    // Tính lại kế hoạch các bước còn lại từ mốc thời gian hiện tại
+    const runningPassiveMap: Record<string, { start: number; endsAt: number }> = {};
+    for (const timer of this.activeTimers.values()) {
+      // Giữ nguyên các bước passive khác vẫn đang đếm giờ nền
+      if (timer.step_id) {
+        const pStep = this.currentSteps.find((s) => s.id === timer.step_id);
+        const endsAtNum = Number(timer.endsAt);
+        const sec = pStep?.seconds || 0;
+        runningPassiveMap[timer.step_id] = {
+          start: Math.max(0, endsAtNum - sec),
+          endsAt: endsAtNum,
+        };
+      }
+    }
+
+    this.lastReplan = replan(
+      { steps: this.currentSteps },
+      {
+        done: this.stepFinishTimes,
+        running_passive: runningPassiveMap,
+      },
+      now,
+      this.currentSession.optimization_mode
+    );
+
+    this.syncRunningTimersToSession();
+    await this.persistSession();
+    return this.buildSnapshot(now);
+  }
+
+  /**
+   * Làm gì: Trả về danh sách các lần lùi bước đã ghi nhận trong phiên hiện tại (T07.3).
+   * Vào: Không có.
+   * Ra: Bản sao mảng { stepId, at }.
+   * Ví dụ: [{ stepId: 'A', at: 120 }].
+   * Gọi bởi: Bộ kiểm thử T07/T19.
+   */
+  getStepBackHistory(): Array<{ stepId: string; at: number }> {
+    return [...this.stepBackHistory];
   }
 
   /**

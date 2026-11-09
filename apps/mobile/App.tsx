@@ -34,6 +34,8 @@ import { CookScreen } from './src/screens/CookScreen.js';
 import { FinishScreen } from './src/screens/FinishScreen.js';
 import { QuickAddScreen } from './src/screens/QuickAddScreen.js';
 import { PantryScreen } from './src/screens/PantryScreen.js';
+import { SettingsScreen } from './src/screens/SettingsScreen.js';
+import { TelemetryService } from './src/services/telemetry-service.js';
 import { STRINGS } from './src/constants/strings.js';
 
 interface MainNavigatorProps {
@@ -41,6 +43,7 @@ interface MainNavigatorProps {
   profileRepo: UserProfileRepo;
   initialProfile: UserProfile | null;
   driver?: SqlDriver;
+  telemetryService?: TelemetryService;
 }
 
 /**
@@ -51,6 +54,7 @@ function MainNavigator({
   profileRepo,
   initialProfile,
   driver,
+  telemetryService,
 }: MainNavigatorProps): React.JSX.Element {
   const { currentRoute, navigate, replace, goBack, canGoBack } = useNavigation();
   const [profile, setProfile] = useState<UserProfile | null>(initialProfile);
@@ -81,6 +85,7 @@ function MainNavigator({
         recipeRepo={recipeRepo}
         userServings={profile?.servings ?? 2}
         onBack={goBack}
+        telemetryService={telemetryService}
         onStartCooking={(recipe, servings, mode) => {
           navigate('Prepare', { recipe, servings, mode });
         }}
@@ -113,6 +118,7 @@ function MainNavigator({
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         mode={currentRoute.params?.mode as any}
         driver={driver}
+        telemetryService={telemetryService}
       />
     );
   }
@@ -128,6 +134,7 @@ function MainNavigator({
         dishName={currentRoute.params?.dishName as string}
         sessionId={currentRoute.params?.sessionId as string}
         pantryService={pantryService}
+        telemetryService={telemetryService}
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         deductedItems={currentRoute.params?.deductedItems as any}
       />
@@ -158,7 +165,18 @@ function MainNavigator({
     );
   }
 
-  // Mặc định hiển thị màn hình Trang chủ (D2, T13.3, T13.4)
+  // Phân nhánh hiển thị màn hình Cài đặt & quyền riêng tư đo lường (T19.4)
+  if (currentRoute.name === 'Settings') {
+    return (
+      <SettingsScreen
+        telemetryService={telemetryService}
+        driver={driver}
+        onBack={canGoBack ? goBack : undefined}
+      />
+    );
+  }
+
+  // Mặc định hiển thị màn hình Trang chủ (D2, T13.3, T13.4, T19.4)
   const homePantryService = driver ? new PantryService(driver) : undefined;
   return (
     <HomeScreen
@@ -167,6 +185,7 @@ function MainNavigator({
       pantryService={homePantryService}
       onOpenPantry={() => navigate('Pantry')}
       onOpenProfile={() => navigate('Welcome', { isEditing: true })}
+      onOpenSettings={() => navigate('Settings')}
       onSelectRecipe={(slug) => navigate('RecipeDetail', { recipeSlug: slug })}
     />
   );
@@ -185,6 +204,7 @@ export default function App({ driverOverride }: AppProps): React.JSX.Element {
   const [recipeRepo, setRecipeRepo] = useState<RecipeRepo | null>(null);
   const [profileRepo, setProfileRepo] = useState<UserProfileRepo | null>(null);
   const [initialProfile, setInitialProfile] = useState<UserProfile | null>(null);
+  const [telemetryService, setTelemetryService] = useState<TelemetryService | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   useEffect(() => {
@@ -216,6 +236,9 @@ export default function App({ driverOverride }: AppProps): React.JSX.Element {
 
         const pRepo = new UserProfileRepo(driver);
         const rRepo = new RecipeRepo(driver);
+        const tService = new TelemetryService({ driver });
+        await tService.init();
+        void tService.flushPendingEvents();
 
         // Đọc hồ sơ hiện tại từ SQLite (D1, D2)
         const currentProfile = await pRepo.getProfile();
@@ -224,6 +247,7 @@ export default function App({ driverOverride }: AppProps): React.JSX.Element {
           setActiveDriver(driver);
           setProfileRepo(pRepo);
           setRecipeRepo(rRepo);
+          setTelemetryService(tService);
           setInitialProfile(currentProfile);
           setReady(true);
         }
@@ -271,6 +295,7 @@ export default function App({ driverOverride }: AppProps): React.JSX.Element {
         profileRepo={profileRepo}
         initialProfile={initialProfile}
         driver={activeDriver || undefined}
+        telemetryService={telemetryService || undefined}
       />
       <StatusBar style="light" />
     </NavigationProvider>

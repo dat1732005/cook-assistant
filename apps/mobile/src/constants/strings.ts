@@ -85,6 +85,7 @@ export const STRINGS = {
     greeting: 'Hôm nay nấu gì nào?',
     subtitle: 'Món ngon an toàn và phù hợp với gian bếp của bạn',
     profileButtonText: 'Hồ sơ & Dị ứng',
+    settingsButtonText: 'Cài đặt',
     filterSectionTitle: 'Lọc theo thời gian nấu tối đa',
     filterAll: 'Tất cả',
     dishListTitle: 'Danh sách món ăn gợi ý',
@@ -180,6 +181,8 @@ export const STRINGS = {
     safetySourcePrefix: 'Nguồn quy tắc:',
     safetyCheckboxLabel: 'Tôi đã kiểm tra và xác nhận tuân thủ quy tắc an toàn này',
     safetyBlockedAlert: 'Bước này có quy tắc an toàn bắt buộc. Bạn cần đánh dấu xác nhận trước khi bấm Xong.',
+    stepBackButton: 'Lùi bước',
+    stepBackDoneNotice: 'Đã đưa bước trước trở lại danh sách cần làm.',
   },
 
   // Màn hình Hoàn tất (FinishScreen - T09)
@@ -190,9 +193,35 @@ export const STRINGS = {
     backToHomeButton: 'Về trang chủ',
   },
 
-  // Trợ lý AI & cảnh báo chế độ giả lập (T17, T18)
+  // Trợ lý AI & cảnh báo chế độ giả lập (T17, T18, T19)
   ai: {
     mockNotice: '(chế độ thử, không phải AI thật)',
     disclaimer: 'AI có thể mắc lỗi. Vui lòng kiểm tra lại trước khi thực hiện.',
+    helpfulButton: 'Hữu ích',
+    helpfulRecorded: 'Đã đánh giá hữu ích',
+  },
+
+  // Màn hình Cài đặt & quyền riêng tư đo lường (T19.4)
+  settings: {
+    headerTitle: 'Cài đặt',
+    telemetrySectionTitle: 'Đo lường ẩn danh & Quyền riêng tư',
+    telemetryToggleLabel: 'Cho phép gửi thống kê sử dụng ẩn danh',
+    telemetryStatusEnabled: 'Đang bật đo lường ẩn danh',
+    telemetryStatusDisabled: 'Đã tắt đo lường — không ghi nhận và không gửi dữ liệu',
+    telemetryExplanation:
+      'Ứng dụng chỉ ghi nhận mã thiết bị ngẫu nhiên ẩn danh cùng loại thao tác (bắt đầu/hoàn tất/thoát phiên nấu, lùi bước, sửa kho sau nấu, phân loại lượt hỏi AI kèm hữu ích hay không) và gửi theo lô khi có mạng.',
+    telemetryPrivacyGuarantee:
+      'Tuyệt đối KHÔNG gửi tên hiển thị, danh sách dị ứng, chế độ ăn hay nội dung câu hỏi và câu trả lời AI.',
+    telemetrySentListTitle: 'Dữ liệu ẩn danh được gửi:',
+    telemetrySentListItems: [
+      '• Mã thiết bị ngẫu nhiên ẩn danh (không gắn danh tính thật)',
+      '• Bắt đầu phiên, hoàn tất phiên, lùi bước, thoát giữa chừng',
+      '• Sửa kho sau khi nấu, loại hỏi AI (thay nguyên liệu/hỏi nấu) và đánh giá hữu ích hay không',
+    ],
+    telemetryNeverSentTitle: 'Dữ liệu KHÔNG bao giờ gửi:',
+    telemetryNeverSentItems: [
+      '• Tên hiển thị, thông tin dị ứng, chế độ ăn',
+      '• Nội dung câu hỏi của bạn hoặc câu trả lời của AI',
+    ],
   },
 } as const;
