@@ -8,6 +8,8 @@
  */
 package com.cook.backend.service;
 
+import com.cook.backend.dto.AiFeedbackRequest;
+import com.cook.backend.dto.AiFeedbackResponse;
 import com.cook.backend.dto.EventBatchRequest;
 import com.cook.backend.dto.EventBatchResponse;
 import com.cook.backend.dto.TelemetryEventDto;
@@ -22,20 +24,28 @@ import java.time.Instant;
 import java.time.format.DateTimeParseException;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 
 @Service
 public class TelemetryService {
 
     private static final Logger log = LoggerFactory.getLogger(TelemetryService.class);
 
-    /** Tập hợp các loại sự kiện ẩn danh hợp lệ được phép tiếp nhận theo T19.1 */
+    /** Mã sự kiện riêng cho phản hồi người dùng báo AI trả lời sai (T20b) */
+    public static final String EVENT_TYPE_AI_WRONG_ANSWER = "ai_wrong_answer";
+
+    /** Độ dài phần hậu tố ngẫu nhiên cho eventId sinh tại backend */
+    private static final int FEEDBACK_EVENT_ID_SUFFIX_LENGTH = 24;
+
+    /** Tập hợp các loại sự kiện ẩn danh hợp lệ được phép tiếp nhận theo T19.1 và T20b */
     public static final Set<String> ALLOWED_EVENT_TYPES = Set.of(
             "session_started",
             "session_completed",
             "step_back",
             "session_abandoned",
             "pantry_adjusted_after_cook",
-            "ai_asked"
+            "ai_asked",
+            EVENT_TYPE_AI_WRONG_ANSWER
     );
 
     /** Tập hợp các giá trị phân loại hỏi AI hợp lệ (tránh dữ liệu văn bản tự do) */
@@ -108,6 +118,51 @@ public class TelemetryService {
 
         log.info("Ghi nhận lô telemetry: accepted={}, deduplicated={}", acceptedCount, deduplicatedCount);
         return new EventBatchResponse(acceptedCount, deduplicatedCount);
+    }
+
+    /**
+     * Làm gì: Ghi nhận phản hồi "Câu trả lời sai" tại POST /v1/ai/feedback thành sự kiện đo lường
+     *         kiểu ai_wrong_answer gắn với deviceHash, feedbackType và questionId;
+     *         tuyệt đối không lưu nội dung câu hỏi hay câu trả lời (T20b).
+     * Vào: rawDeviceId (header X-Device-Id thô), request (AiFeedbackRequest chỉ gồm mã câu hỏi và loại phản hồi).
+     * Ra: AiFeedbackResponse gồm status = "ok", eventId và eventType = "ai_wrong_answer".
+     * Ví dụ: feedbackType = "ask_wrong_answer", questionId = "q_123" -> lưu TelemetryEvent với eventType = "ai_wrong_answer".
+     * Gọi bởi: AiController.feedback().
+     */
+    @Transactional
+    public AiFeedbackResponse recordAiWrongAnswerFeedback(String rawDeviceId, AiFeedbackRequest request) {
+        // Băm một chiều X-Device-Id kèm salt, không lưu ID thiết bị thô
+        String deviceHash = deviceAnonymizer.anonymize(rawDeviceId);
+        String eventId = "fb_" + UUID.randomUUID().toString().replace("-", "").substring(0, FEEDBACK_EVENT_ID_SUFFIX_LENGTH);
+        String normalizedFeedbackType = request.feedbackType().trim();
+        String normalizedQuestionId = request.questionId().trim();
+
+        // Suy ra ai_kind chuẩn nếu feedbackType cho biết xuất xứ substitute hay ask
+        String inferredAiKind = null;
+        if (normalizedFeedbackType.contains("substitute")) {
+            inferredAiKind = "substitute";
+        } else if (normalizedFeedbackType.contains("ask")) {
+            inferredAiKind = "ask";
+        }
+
+        TelemetryEvent entity = new TelemetryEvent(
+                eventId,
+                deviceHash,
+                trimOrNull(request.sessionId()),
+                EVENT_TYPE_AI_WRONG_ANSWER,
+                trimOrNull(request.stepId()),
+                trimOrNull(request.recipeSlug()),
+                inferredAiKind,
+                Boolean.FALSE,
+                Instant.now()
+        );
+        entity.setQuestionId(normalizedQuestionId);
+        entity.setFeedbackType(normalizedFeedbackType);
+        telemetryEventRepository.save(entity);
+
+        log.info("Ghi nhận phản hồi AI sai: eventId={}, feedbackType={}, questionId={}",
+                eventId, normalizedFeedbackType, normalizedQuestionId);
+        return new AiFeedbackResponse("ok", eventId, EVENT_TYPE_AI_WRONG_ANSWER);
     }
 
     /**

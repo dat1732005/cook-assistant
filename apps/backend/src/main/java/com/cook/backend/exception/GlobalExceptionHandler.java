@@ -47,6 +47,13 @@ public class GlobalExceptionHandler {
                 .body(new ErrorResponse("AI_TIMEOUT", ex.getMessage()));
     }
 
+    @ExceptionHandler(AiProviderNotConfiguredException.class)
+    public ResponseEntity<ErrorResponse> handleAiProviderNotConfigured(AiProviderNotConfiguredException ex) {
+        log.warn("AI provider not configured yet: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                .body(new ErrorResponse("AI_PROVIDER_NOT_CONFIGURED", ex.getMessage()));
+    }
+
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ErrorResponse> handleIllegalArgument(IllegalArgumentException ex) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)

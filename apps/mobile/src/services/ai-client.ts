@@ -54,6 +54,43 @@ export interface AskResultData {
   action?: string | null;
 }
 
+export type AiFeedbackType =
+  | 'ask_wrong_answer'
+  | 'substitute_wrong_answer'
+  | 'wrong_answer'
+  | 'inaccurate'
+  | 'unsafe';
+
+export interface AiFeedbackParams {
+  questionId: string;
+  feedbackType: AiFeedbackType | string;
+  sessionId?: string;
+  recipeSlug?: string;
+  stepId?: string;
+}
+
+export interface AiFeedbackResultData {
+  status: string;
+  eventId?: string;
+  eventType?: string;
+}
+
+/** Danh sách khóa chứa nội dung nhạy cảm tuyệt đối không gửi lên /v1/ai/feedback */
+export const FORBIDDEN_FEEDBACK_FIELDS = [
+  'question',
+  'answer',
+  'prompt',
+  'comment',
+  'feedbackText',
+  'allergies',
+  'name',
+  'displayName',
+  'display_name',
+  'ingredients',
+  'pantry',
+  'userProfile',
+] as const;
+
 export type AiErrorCode =
   | 'TIMEOUT'
   | 'NETWORK_ERROR'
@@ -145,6 +182,55 @@ export function formatAiMockNotice(isMock?: boolean): string | null {
   return null;
 }
 
+/**
+ * Làm gì: Tạo mã câu hỏi ẩn danh một chiều phía ứng dụng để đính kèm phản hồi sai (T20b),
+ *         giúp đối soát lượt hỏi mà không truyền hay lưu nội dung câu hỏi/câu trả lời.
+ * Vào: prefix ('ask' | 'sub', mặc định 'ask').
+ * Ra: Chuỗi mã câu hỏi ngắn không chứa thông tin nhạy cảm (ví dụ "q_ask_m1abc_x9k2p").
+ * Gọi bởi: CookScreen và SubstituteModal.
+ */
+export function generateAnonymousQuestionId(prefix: 'ask' | 'sub' = 'ask'): string {
+  const randomSuffix = Math.random().toString(36).substring(2, 8);
+  return `q_${prefix}_${Date.now().toString(36)}_${randomSuffix}`;
+}
+
+/**
+ * Làm gì: Lọc thuần danh sách trường ẩn danh hợp lệ cho API POST /v1/ai/feedback,
+ *         loại bỏ hoàn toàn question, answer, comment, allergies nếu vô tình truyền vào.
+ * Vào: feedbackData (AiFeedbackParams gồm questionId, feedbackType và ID ngữ cảnh tùy chọn).
+ * Ra: Đối tượng payload sạch chỉ gồm các mã định danh ẩn danh.
+ * Gọi bởi: AiClient.reportFeedback() và bộ kiểm thử T20b.
+ */
+export function buildSafeFeedbackPayload(feedbackData: AiFeedbackParams): AiFeedbackParams {
+  const questionId = String(feedbackData.questionId ?? '').trim();
+  const feedbackType = String(feedbackData.feedbackType ?? '').trim();
+
+  if (!questionId) {
+    throw new Error('questionId không được để trống khi gửi phản hồi AI.');
+  }
+  if (!feedbackType) {
+    throw new Error('feedbackType không được để trống khi gửi phản hồi AI.');
+  }
+
+  const safePayload: AiFeedbackParams = {
+    questionId,
+    feedbackType,
+  };
+
+  // Chỉ sao chép các khóa định danh phi nhạy cảm nếu có giá trị hợp lệ
+  if (typeof feedbackData.sessionId === 'string' && feedbackData.sessionId.trim().length > 0) {
+    safePayload.sessionId = feedbackData.sessionId.trim();
+  }
+  if (typeof feedbackData.recipeSlug === 'string' && feedbackData.recipeSlug.trim().length > 0) {
+    safePayload.recipeSlug = feedbackData.recipeSlug.trim();
+  }
+  if (typeof feedbackData.stepId === 'string' && feedbackData.stepId.trim().length > 0) {
+    safePayload.stepId = feedbackData.stepId.trim();
+  }
+
+  return safePayload;
+}
+
 export class AiClient {
   private explicitBaseUrl?: string;
   private timeoutMs: number;
@@ -189,18 +275,24 @@ export class AiClient {
   }
 
   /**
-   * Làm gì: Gửi phản hồi "Câu trả lời sai" về hệ thống (T18.4).
-   * Vào: feedbackData (câu hỏi, câu trả lời, mã nguyên liệu và nhận xét).
-   * Ra: Promise<AiResult<{ status: string }>>.
+   * Làm gì: Gửi phản hồi ẩn danh "Câu trả lời sai" tới POST /v1/ai/feedback (T18.4, T20b),
+   *         chỉ gửi questionId, feedbackType và mã ngữ cảnh; tuyệt đối không gửi câu hỏi hay câu trả lời.
+   * Vào: feedbackData (AiFeedbackParams chứa questionId và feedbackType).
+   * Ra: Promise<AiResult<AiFeedbackResultData>>.
    * Gọi bởi: SubstituteModal, CookScreen.
    */
-  async reportFeedback(feedbackData: {
-    question?: string;
-    answer?: string;
-    ingredientId?: string;
-    comment?: string;
-  }): Promise<AiResult<{ status: string }>> {
-    return this.postWithResilience<{ status: string }>('/v1/ai/feedback', feedbackData);
+  async reportFeedback(feedbackData: AiFeedbackParams): Promise<AiResult<AiFeedbackResultData>> {
+    try {
+      const safePayload = buildSafeFeedbackPayload(feedbackData);
+      return this.postWithResilience<AiFeedbackResultData>('/v1/ai/feedback', safePayload);
+    } catch (err: unknown) {
+      return {
+        success: false,
+        errorCode: 'UNKNOWN',
+        message: err instanceof Error ? err.message : 'Dữ liệu phản hồi AI không hợp lệ.',
+        isMock: false,
+      };
+    }
   }
 
   /**

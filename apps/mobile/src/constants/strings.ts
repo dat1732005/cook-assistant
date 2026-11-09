@@ -171,6 +171,7 @@ export const STRINGS = {
     manualTimerPrompt: 'Nhập số giây muốn hẹn giờ:',
     timerRunningBadge: 'Đang đếm ngược:',
     keepAwakeActive: 'Màn hình luôn sáng',
+    keepAwakeInactive: 'Màn hình tự tắt',
     exitConfirmTitle: 'Thoát khỏi phiên nấu ăn?',
     exitConfirmMessage: 'Bạn có chắc chắn muốn lùi lại hoặc thoát? Phiên nấu hiện tại sẽ được lưu trạng thái.',
     abandonConfirmTitle: 'Bỏ dở phiên nấu ăn?',
