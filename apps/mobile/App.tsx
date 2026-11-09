@@ -36,6 +36,7 @@ import { QuickAddScreen } from './src/screens/QuickAddScreen.js';
 import { PantryScreen } from './src/screens/PantryScreen.js';
 import { SettingsScreen } from './src/screens/SettingsScreen.js';
 import { TelemetryService } from './src/services/telemetry-service.js';
+import { getAppConfig } from './src/config/env.js';
 import { STRINGS } from './src/constants/strings.js';
 
 interface MainNavigatorProps {
@@ -224,9 +225,14 @@ export default function App({ driverOverride }: AppProps): React.JSX.Element {
         const runner = new MigrationRunner(driver);
         await runner.run();
 
-        // Kiểm tra cờ môi trường phát triển: Khi chạy __DEV__ thì nạp bộ fixture mẫu (T06.3, R1, R3)
-        // Trong bản build production, khối if (__DEV__) và require bên trong được loại bỏ hoàn toàn (DCE).
-        if (__DEV__) {
+        // Đọc cấu hình môi trường duy nhất từ Constants.expoConfig.extra (T20.1, T20.5)
+        const appConfig = getAppConfig();
+        // Lệnh console.log này chỉ còn tồn tại trong bundle development và bị babel.config.js loại bỏ hoàn toàn ở production (T20.5)
+        console.log(`[COOK_DIAG_LOG] app_boot env=${appConfig.appEnv}`);
+
+        // Kiểm tra cờ môi trường phát triển: Khi chạy __DEV__ và bật debug tools thì nạp bộ fixture mẫu (T06.3, R1, R3, T20.5)
+        // Trong bản build production/release, khối if (__DEV__ && ...) bị loại bỏ hoàn toàn (DCE).
+        if (__DEV__ && appConfig.isDebugToolsEnabled) {
           // eslint-disable-next-line @typescript-eslint/no-require-imports
           const { DEV_DATA_BUNDLE } = require('./src/data/dev-fixtures.js');
           await loadDataBundle(driver, DEV_DATA_BUNDLE, {

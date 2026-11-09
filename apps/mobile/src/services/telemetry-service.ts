@@ -10,6 +10,7 @@
 
 import type { SqlDriver } from '@cook/core';
 import { getAnonymousDeviceId } from './ai-client.js';
+import { getAppConfig } from '../config/env.js';
 
 /** Khóa lưu trạng thái bật/tắt đo lường trong bảng app_metadata */
 export const TELEMETRY_ENABLED_METADATA_KEY = 'telemetry_enabled';
@@ -192,7 +193,7 @@ export function assertBatchPayloadIsAnonymous(payload: { events: WireTelemetryEv
 
 export class TelemetryService {
   private driver?: SqlDriver;
-  private baseUrl: string;
+  private explicitBaseUrl?: string;
   private timeoutMs: number;
   private deviceId: string;
   private enabledInMemory: boolean;
@@ -202,12 +203,23 @@ export class TelemetryService {
 
   constructor(config: TelemetryServiceConfig = {}) {
     this.driver = config.driver;
-    this.baseUrl =
-      config.baseUrl || process.env.EXPO_PUBLIC_BACKEND_URL || 'http://10.0.2.2:8080';
+    // Dùng địa chỉ truyền tường minh khi kiểm thử hoặc đọc từ Constants.expoConfig.extra lúc chạy thật
+    this.explicitBaseUrl = config.baseUrl;
     this.timeoutMs = config.timeoutMs ?? DEFAULT_TELEMETRY_TIMEOUT_MS;
     this.deviceId = config.deviceId || getAnonymousDeviceId();
     this.enabledInMemory = config.defaultEnabled ?? true;
     this.isOnlineProvider = config.isOnlineProvider;
+  }
+
+  /**
+   * Làm gì: Lấy địa chỉ gốc máy chủ backend từ cấu hình kiểm thử hoặc Constants.expoConfig.extra (T20.1).
+   * Vào: Không có.
+   * Ra: Chuỗi baseUrl đã bỏ dấu '/' thừa ở cuối.
+   * Gọi bởi: flushPendingEvents() và unit test t20-config.test.ts.
+   */
+  getResolvedBaseUrl(): string {
+    const raw = this.explicitBaseUrl ?? getAppConfig().apiBaseUrl;
+    return raw.trim().replace(/\/+$/, '');
   }
 
   /**
@@ -633,13 +645,24 @@ export class TelemetryService {
     // Kiểm tra chốt chặn an toàn trước khi đưa lên kết nối mạng
     assertBatchPayloadIsAnonymous(payload);
 
+    const resolvedBaseUrl = this.getResolvedBaseUrl();
+    // Nếu chưa có địa chỉ máy chủ backend trong cấu hình build thì giữ sự kiện ở hàng đợi cục bộ
+    if (!resolvedBaseUrl) {
+      return {
+        sent: 0,
+        deduplicated: 0,
+        remaining: pendingAll.length,
+        skippedReason: 'network_error',
+      };
+    }
+
     const controller = new AbortController();
     const timer = setTimeout(() => {
       controller.abort();
     }, this.timeoutMs);
 
     try {
-      const url = `${this.baseUrl.replace(/\/$/, '')}/v1/events`;
+      const url = `${resolvedBaseUrl}/v1/events`;
       const response = await fetch(url, {
         method: 'POST',
         headers: {

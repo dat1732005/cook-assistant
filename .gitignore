@@ -27,6 +27,16 @@ id_rsa*
 id_ed25519*
 secrets/
 credentials.json
+*service-account*.json
+*play-key*.json
+google-services.json
+eas-credentials*
+
+# Mobile build artifacts
+*.apk
+*.aab
+*.mobileprovision
+apps/mobile/dist*/
 
 # IDE
 .vscode/

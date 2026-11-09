@@ -15,6 +15,7 @@
  */
 
 import { STRINGS } from '../constants/strings.js';
+import { getAppConfig } from '../config/env.js';
 
 /** Tên HTTP header do backend trả về khi đang chạy chế độ AI giả lập (mock) */
 export const AI_MOCK_HEADER_NAME = 'X-AI-Mock';
@@ -145,15 +146,26 @@ export function formatAiMockNotice(isMock?: boolean): string | null {
 }
 
 export class AiClient {
-  private baseUrl: string;
+  private explicitBaseUrl?: string;
   private timeoutMs: number;
   private deviceId: string;
 
   constructor(config: AiClientConfig = {}) {
-    // Mặc định địa chỉ backend cục bộ; trong build production lấy từ process.env.EXPO_PUBLIC_BACKEND_URL
-    this.baseUrl = config.baseUrl || process.env.EXPO_PUBLIC_BACKEND_URL || 'http://10.0.2.2:8080';
+    // Lưu địa chỉ truyền trực tiếp (nếu test truyền) hoặc đọc động từ Constants.expoConfig.extra qua getAppConfig()
+    this.explicitBaseUrl = config.baseUrl;
     this.timeoutMs = config.timeoutMs ?? DEFAULT_AI_TIMEOUT_MS;
     this.deviceId = config.deviceId || getAnonymousDeviceId();
+  }
+
+  /**
+   * Làm gì: Lấy địa chỉ máy chủ backend từ cấu hình test hoặc từ Constants.expoConfig.extra (T20.1).
+   * Vào: Không có.
+   * Ra: Chuỗi baseUrl đã loại bỏ dấu '/' thừa ở cuối (rỗng nếu chưa cấu hình).
+   * Gọi bởi: postWithResilience() và unit test t20-config.test.ts.
+   */
+  getResolvedBaseUrl(): string {
+    const raw = this.explicitBaseUrl ?? getAppConfig().apiBaseUrl;
+    return raw.trim().replace(/\/+$/, '');
   }
 
   /**
@@ -199,13 +211,24 @@ export class AiClient {
    * Gọi bởi: substitute(), ask(), reportFeedback().
    */
   private async postWithResilience<T>(endpoint: string, body: unknown): Promise<AiResult<T>> {
+    const resolvedBaseUrl = this.getResolvedBaseUrl();
+    // Nếu chưa có địa chỉ máy chủ trong cấu hình build, thoát an toàn để không treo app và vẫn giữ hẹn giờ chạy
+    if (!resolvedBaseUrl) {
+      return {
+        success: false,
+        errorCode: 'NETWORK_ERROR',
+        message: 'Chưa cấu hình địa chỉ máy chủ backend. Vui lòng thử lại sau.',
+        isMock: false,
+      };
+    }
+
     const controller = new AbortController();
     const timer = setTimeout(() => {
       controller.abort();
     }, this.timeoutMs);
 
     try {
-      const url = `${this.baseUrl.replace(/\/$/, '')}${endpoint}`;
+      const url = `${resolvedBaseUrl}${endpoint}`;
       const response = await fetch(url, {
         method: 'POST',
         headers: {
