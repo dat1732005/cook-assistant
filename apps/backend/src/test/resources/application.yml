@@ -1,0 +1,26 @@
+spring:
+  application:
+    name: cook-backend-test
+  datasource:
+    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;MODE=PostgreSQL
+    username: sa
+    password: ""
+    driver-class-name: org.h2.Driver
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    database-platform: org.hibernate.dialect.H2Dialect
+  flyway:
+    enabled: false
+
+cook:
+  env: test
+  env-check:
+    enabled: false
+  device-salt: "test-salt-secret-key-12345"
+  rate-limit:
+    limit: 3
+    window-seconds: 60
+  ai:
+    provider: mock
+    ask-enabled: false

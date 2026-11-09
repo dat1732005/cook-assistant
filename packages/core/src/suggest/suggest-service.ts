@@ -69,17 +69,26 @@ export interface ScoredRecipe {
   recipeId: string;
   slug: string;
   score: number;
+  cost?: number;
+  range?: [number, number];
   breakdown: {
     phu: number;
     capBach: number;
     thoiGian: number;
     moi: number;
+    diemChiPhi?: number;
   };
+  estimatedCost?: number;
   estimatedCostRange?: {
     min: number;
     max: number;
   };
 }
+
+export type SuggestResult = ScoredRecipe[] & {
+  unpriced?: string[];
+  unpricedRecipes?: string[];
+};
 
 /**
  * Cấu hình quy đổi đơn vị của nguyên liệu.
@@ -112,7 +121,7 @@ export class SuggestService {
     cookHistory?: Record<string, number>;
     conversionsMap: UnitConversionMap;
     mode?: 'standard' | 'estimation';
-  }): ScoredRecipe[] {
+  }): SuggestResult {
     const {
       recipes,
       profile,
@@ -130,25 +139,29 @@ export class SuggestService {
       this.passesHardFilter(recipe, profile),
     );
 
-    // Bước 2: Chấm điểm từng món vượt qua bộ lọc
+    // Nếu ở chế độ ước chừng (T12 bổ sung)
+    if (mode === 'estimation') {
+      return this.runEstimationMode(
+        passedRecipes,
+        profile,
+        normalizedPantry,
+        cookHistory,
+        conversionsMap,
+      );
+    }
+
+    // Bước 2: Chấm điểm từng món vượt qua bộ lọc (Chế độ chuẩn - T12.2)
     const scoredList: ScoredRecipe[] = [];
 
     for (const recipe of passedRecipes) {
-      if (mode === 'estimation') {
-        // Chế độ ước chừng (T12.3) – Đề xuất chờ duyệt
-        const scored = this.scoreEstimationMode(recipe, profile, cookHistory);
-        scoredList.push(scored);
-      } else {
-        // Chế độ chuẩn (T12.2) – Bám đúng công thức T10.md
-        const scored = this.scoreStandardMode(
-          recipe,
-          profile,
-          normalizedPantry,
-          cookHistory,
-          conversionsMap,
-        );
-        scoredList.push(scored);
-      }
+      const scored = this.scoreStandardMode(
+        recipe,
+        profile,
+        normalizedPantry,
+        cookHistory,
+        conversionsMap,
+      );
+      scoredList.push(scored);
     }
 
     // Bước 3: Sắp xếp kết quả (Điểm giảm dần; nếu hòa điểm thì theo slug tăng dần)
@@ -162,7 +175,10 @@ export class SuggestService {
       return a.slug.localeCompare(b.slug);
     });
 
-    return scoredList;
+    const result = scoredList as SuggestResult;
+    result.unpriced = [];
+    result.unpricedRecipes = [];
+    return result;
   }
 
   // ─────────────────────────────────────────
@@ -312,54 +328,161 @@ export class SuggestService {
   }
 
   // ─────────────────────────────────────────
-  // CHẾ ĐỘ ƯỚC CHỪNG (ESTIMATION MODE - T12.3)
+  // CHẾ ĐỘ ƯỚC CHỪNG (ESTIMATION MODE - T12 BỔ SUNG)
   // ─────────────────────────────────────────
 
   /**
-   * Chế độ ước chừng (khi kho trống hoặc người dùng muốn đi chợ mua đồ):
-   * ĐỀ XUẤT CÔNG THỨC (CHỜ DUYỆT, KHÔNG TỰ QUYẾT THEO R4):
-   *   - Bỏ thành phần "phủ" (vì kho đang trống).
-   *   - Chi phí ước tính tính theo giá tham khảo của các nguyên liệu trong công thức.
-   *   - Hiển thị khoảng giá ±20% [cost * 0.8, cost * 1.2] theo đúng T12.3.
-   *   - Điểm đề xuất: ưu tiên món mới và thời gian chuẩn bị ngắn.
+   * Chế độ ước chừng (T12 bổ sung bám đúng docs/expected/T12.md).
+   *
+   * Quy tắc đã chốt (không thêm tham số mới):
+   *   1. Chi phí món = tổng (lượng quy về đơn vị gốc × giá theo đơn vị gốc) của các nguyên liệu bắt buộc, theo số người ăn.
+   *      Nguyên liệu tùy chọn không tính.
+   *   2. Món có nguyên liệu bắt buộc chưa có giá không được xếp hạng, đưa vào danh sách riêng "chưa có giá" (unpriced).
+   *      Không dùng giá mặc định.
+   *   3. điểm_chi_phí chuẩn hóa trong danh sách món đang xét:
+   *      (chi_phí_cao_nhất − chi_phí_món) / (chi_phí_cao_nhất − chi_phí_thấp_nhất).
+   *      Nếu mọi món cùng chi phí (hoặc chỉ có 1 món) thì bằng 1.
+   *   4. điểm = (0,5·điểm_chi_phí + 0,2·cấp_bách + 0,15·thời_gian + 0,05·mới) / 0,9.
+   *   5. Hiển thị chi phí dạng khoảng ±20% (chi phí × 0,8 đến chi phí × 1,2).
    */
-  private scoreEstimationMode(
-    recipe: SuggestRecipeInput,
+  private runEstimationMode(
+    passedRecipes: SuggestRecipeInput[],
     profile: SuggestUserProfile,
+    normalizedPantry: Record<string, PantryItemSummary>,
     cookHistory: Record<string, number>,
-  ): ScoredRecipe {
-    let totalCost = 0;
-    const scale = profile.servings / recipe.servings_base;
+    conversionsMap: UnitConversionMap,
+  ): SuggestResult {
+    const unpriced: string[] = [];
+    const pricedItems: Array<{
+      recipe: SuggestRecipeInput;
+      cost: number;
+      range: [number, number];
+      capBach: number;
+      thoiGian: number;
+      moi: number;
+    }> = [];
 
-    for (const ing of recipe.ingredients) {
-      if (ing.referencePrice) {
-        totalCost += ing.referencePrice * scale;
+    for (const recipe of passedRecipes) {
+      let missingPrice = false;
+      let totalCost = 0;
+
+      for (const ing of recipe.ingredients) {
+        if (ing.optional) {
+          continue;
+        }
+        if (ing.referencePrice === null || ing.referencePrice === undefined) {
+          missingPrice = true;
+          break;
+        }
+
+        const convInfo = conversionsMap[ing.ingredientId];
+        if (!convInfo) {
+          throw new Error(`Thiếu quy đổi cho nguyên liệu: ${ing.ingredientId}`);
+        }
+        const baseAmount = calcDeductAmount(
+          ing.qty,
+          ing.unit,
+          convInfo.baseUnit,
+          convInfo.conversions,
+          profile.servings,
+          recipe.servings_base,
+        );
+        totalCost += baseAmount * ing.referencePrice;
       }
-    }
 
-    const cookCount = cookHistory[recipe.id] ?? cookHistory[recipe.slug] ?? 0;
-    const moi = cookCount === 0 ? 1.0 : 0.0;
-    const thoiGian = 1.0;
+      if (missingPrice) {
+        unpriced.push(recipe.id);
+        continue;
+      }
 
-    // Đề xuất công thức điểm ước chừng: 0.6 thời gian + 0.4 mới
-    const score = roundTo4(0.6 * thoiGian + 0.4 * moi);
+      // Thành phần cấp bách: có nguyên liệu bắt buộc có lô hết hạn trong vòng 2 ngày không
+      let hasUrgent = false;
+      for (const ing of recipe.ingredients) {
+        if (ing.optional) continue;
+        const p = normalizedPantry[ing.ingredientId];
+        if (
+          p?.earliestExpiryDay !== undefined &&
+          p.earliestExpiryDay !== null &&
+          p.earliestExpiryDay >= 0 &&
+          p.earliestExpiryDay <= URGENT_EXPIRY_DAYS
+        ) {
+          hasUrgent = true;
+          break;
+        }
+      }
+      const capBach = hasUrgent ? 1.0 : 0.0;
+      const thoiGian = 1.0;
+      const cookCount = cookHistory[recipe.id] ?? cookHistory[recipe.slug] ?? 0;
+      const moi = cookCount === 0 ? 1.0 : 0.0;
 
-    return {
-      id: recipe.id,
-      recipeId: recipe.id,
-      slug: recipe.slug,
-      score,
-      breakdown: {
-        phu: 0,
-        capBach: 0,
+      const roundedCost = Math.round(totalCost);
+      const minRange = Math.round(roundedCost * 0.8);
+      const maxRange = Math.round(roundedCost * 1.2);
+
+      pricedItems.push({
+        recipe,
+        cost: roundedCost,
+        range: [minRange, maxRange],
+        capBach,
         thoiGian,
         moi,
-      },
-      estimatedCostRange: {
-        min: Math.round(totalCost * 0.8),
-        max: Math.round(totalCost * 1.2),
-      },
-    };
+      });
+    }
+
+    const costs = pricedItems.map((p) => p.cost);
+    const maxCost = costs.length > 0 ? Math.max(...costs) : 0;
+    const minCost = costs.length > 0 ? Math.min(...costs) : 0;
+
+    const scoredList: ScoredRecipe[] = [];
+
+    for (const item of pricedItems) {
+      const diemChiPhi =
+        maxCost === minCost
+          ? 1.0
+          : (maxCost - item.cost) / (maxCost - minCost);
+
+      const rawTotal =
+        RAW_WEIGHTS.phu * diemChiPhi +
+        RAW_WEIGHTS.capBach * item.capBach +
+        RAW_WEIGHTS.thoiGian * item.thoiGian +
+        RAW_WEIGHTS.moi * item.moi;
+
+      const finalScore = roundTo4(rawTotal / MVP_NORMALIZATION_FACTOR);
+
+      scoredList.push({
+        id: item.recipe.id,
+        recipeId: item.recipe.id,
+        slug: item.recipe.slug,
+        score: finalScore,
+        cost: item.cost,
+        range: item.range,
+        estimatedCost: item.cost,
+        estimatedCostRange: {
+          min: item.range[0],
+          max: item.range[1],
+        },
+        breakdown: {
+          phu: diemChiPhi,
+          diemChiPhi: roundTo4(diemChiPhi),
+          capBach: item.capBach,
+          thoiGian: item.thoiGian,
+          moi: item.moi,
+        },
+      });
+    }
+
+    scoredList.sort((a, b) => {
+      const diff = b.score - a.score;
+      if (Math.abs(diff) > SCORE_TOLERANCE) {
+        return diff;
+      }
+      return a.slug.localeCompare(b.slug);
+    });
+
+    const result = scoredList as SuggestResult;
+    result.unpriced = unpriced;
+    result.unpricedRecipes = unpriced;
+    return result;
   }
 
   // ─────────────────────────────────────────

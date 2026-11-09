@@ -22,11 +22,13 @@ import {
   Alert,
   Modal,
   TextInput,
+  ActivityIndicator,
 } from 'react-native';
 import type { Recipe, RecipeStep, SqlDriver } from '@cook/core';
 import { SessionService, type SessionSnapshot } from '@cook/core';
 import { useNavigation } from '../navigation/router.js';
 import { STRINGS } from '../constants/strings.js';
+import { AiClient, defaultAiClient, formatAiMockNotice } from '../services/ai-client.js';
 
 export interface CookScreenProps {
   recipe: Recipe;
@@ -34,6 +36,7 @@ export interface CookScreenProps {
   mode?: 'fastest' | 'fewest_tools';
   driver?: SqlDriver;
   serviceOverride?: SessionService;
+  aiClient?: AiClient;
   initialNow?: number;
 }
 
@@ -43,6 +46,7 @@ export function CookScreen({
   mode = 'fastest',
   driver,
   serviceOverride,
+  aiClient = defaultAiClient,
   initialNow = 0,
 }: CookScreenProps): React.JSX.Element {
   const { navigate, goBack, replace } = useNavigation();
@@ -58,6 +62,65 @@ export function CookScreen({
   const [isKeepAwakeActive, setIsKeepAwakeActive] = useState<boolean>(true);
   const [manualModalStepId, setManualModalStepId] = useState<string | null>(null);
   const [manualSecondsInput, setManualSecondsInput] = useState<string>('60');
+
+  // Khối hỏi đáp AI trong màn Nấu (T18.3, T18.4)
+  const [aiQuestion, setAiQuestion] = useState<string>('');
+  const [aiLoading, setAiLoading] = useState<boolean>(false);
+  const [aiAnswer, setAiAnswer] = useState<{
+    answer: string;
+    action?: string | null;
+    isMock?: boolean;
+  } | null>(null);
+  const [feedbackSent, setFeedbackSent] = useState<boolean>(false);
+
+  const handleAskAi = useCallback(async () => {
+    if (!aiQuestion.trim()) return;
+    setAiLoading(true);
+    setFeedbackSent(false);
+
+    try {
+      const res = await aiClient.ask({
+        question: aiQuestion.trim(),
+        currentStep: snapshot?.now_group[0],
+        remainingSteps: snapshot?.next,
+      });
+
+      if (res.success) {
+        setAiAnswer({ ...res.data, isMock: Boolean(res.isMock) });
+      } else {
+        setAiAnswer({ answer: res.message, action: null, isMock: Boolean(res.isMock) });
+      }
+    } catch {
+      setAiAnswer({ answer: 'Không thể kết nối trợ lý AI lúc này.', action: null, isMock: false });
+    } finally {
+      setAiLoading(false);
+    }
+  }, [aiClient, aiQuestion, snapshot]);
+
+  // Áp dụng hành động đề xuất từ AI (hẹn giờ chỉ đổi khi người dùng bấm) (T18.3)
+  const handleApplyAiAction = useCallback(async () => {
+    if (!aiAnswer?.action) return;
+    // Ví dụ đề xuất thêm 120s cho bước hiện tại
+    const targetStep = snapshot?.now_group[0];
+    if (targetStep) {
+      const res = await sessionService.setManualTimer(120, currentTime, 'Đề xuất AI', targetStep);
+      setSnapshot(res.snapshot);
+      Alert.alert('Đã cập nhật', 'Đã đặt thêm hẹn giờ theo đề xuất.');
+    }
+  }, [aiAnswer, snapshot, sessionService, currentTime]);
+
+  const handleReportWrongAnswer = useCallback(async () => {
+    try {
+      await aiClient.reportFeedback({
+        question: aiQuestion,
+        answer: aiAnswer?.answer,
+      });
+      setFeedbackSent(true);
+      Alert.alert('Đã gửi', 'Cảm ơn bạn đã phản hồi câu trả lời sai.');
+    } catch {
+      setFeedbackSent(true);
+    }
+  }, [aiClient, aiQuestion, aiAnswer]);
 
   // Khởi tạo phiên nấu khi vào màn hình
   useEffect(() => {
@@ -456,6 +519,72 @@ export function CookScreen({
             })}
           </View>
         )}
+
+        {/* ======================================================== */}
+        {/* KHỐI HỎI NHANH TRỢ LÝ AI KHI ĐANG NẤU (T18.3, T18.4) */}
+        {/* ======================================================== */}
+        <View style={styles.aiAskContainer} testID="ai-ask-container">
+          <Text style={styles.groupTitle}>🤖 Hỏi nhanh trợ lý AI</Text>
+          <View style={styles.aiInputRow}>
+            <TextInput
+              style={styles.aiTextInput}
+              placeholder="Hỏi về bước hiện tại, thay thế, thời gian..."
+              value={aiQuestion}
+              onChangeText={setAiQuestion}
+              testID="ai-question-input"
+            />
+            <TouchableOpacity
+              style={styles.aiSendButton}
+              onPress={handleAskAi}
+              disabled={aiLoading}
+              testID="ai-ask-button"
+            >
+              {aiLoading ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <Text style={styles.aiSendButtonText}>Hỏi</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+
+          {aiAnswer && (
+            <View style={styles.aiAnswerCard} testID="ai-answer-card">
+              {formatAiMockNotice(aiAnswer.isMock) ? (
+                <Text style={styles.aiMockNoticeText} testID="ai-mock-notice">
+                  {formatAiMockNotice(aiAnswer.isMock)}
+                </Text>
+              ) : null}
+              <Text style={styles.aiAnswerText}>{aiAnswer.answer}</Text>
+
+              {aiAnswer.action && (
+                <TouchableOpacity
+                  style={styles.aiActionButton}
+                  onPress={handleApplyAiAction}
+                  testID="ai-apply-action-button"
+                >
+                  <Text style={styles.aiActionButtonText}>
+                    ⚡ Áp dụng đề xuất: {aiAnswer.action}
+                  </Text>
+                </TouchableOpacity>
+              )}
+
+              <Text style={styles.aiDisclaimerText}>
+                ⚠️ AI có thể mắc lỗi. Vui lòng kiểm tra lại trước khi thực hiện.
+              </Text>
+
+              <TouchableOpacity
+                style={styles.wrongAnswerButton}
+                onPress={handleReportWrongAnswer}
+                disabled={feedbackSent}
+                testID="wrong-answer-button"
+              >
+                <Text style={styles.wrongAnswerText}>
+                  {feedbackSent ? '✓ Đã báo cáo' : '🚩 Câu trả lời sai'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
       </ScrollView>
 
       {/* Modal Hẹn giờ tay */}
@@ -851,5 +980,93 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700',
     color: '#FFFFFF',
+  },
+  aiAskContainer: {
+    marginTop: 10,
+    marginBottom: 24,
+    padding: 16,
+    backgroundColor: '#F0F9FF',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#BAE6FD',
+  },
+  aiInputRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 8,
+  },
+  aiTextInput: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#BAE6FD',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    fontSize: 14,
+  },
+  aiSendButton: {
+    backgroundColor: '#0284C7',
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  aiSendButtonText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+    fontSize: 14,
+  },
+  aiAnswerCard: {
+    marginTop: 12,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 8,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#E0F2FE',
+  },
+  aiMockNoticeText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#7C3AED',
+    marginBottom: 6,
+  },
+  aiAnswerText: {
+    fontSize: 14,
+    color: '#0F172A',
+    lineHeight: 20,
+    marginBottom: 8,
+  },
+  aiActionButton: {
+    backgroundColor: '#E0F2FE',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 6,
+    marginBottom: 8,
+  },
+  aiActionButtonText: {
+    color: '#0369A1',
+    fontWeight: '600',
+    fontSize: 13,
+  },
+  aiDisclaimerText: {
+    fontSize: 11,
+    color: '#64748B',
+    fontStyle: 'italic',
+    marginBottom: 8,
+  },
+  wrongAnswerButton: {
+    alignSelf: 'flex-start',
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 4,
+    backgroundColor: '#FEF2F2',
+    borderWidth: 1,
+    borderColor: '#FECACA',
+  },
+  wrongAnswerText: {
+    fontSize: 12,
+    color: '#DC2626',
+    fontWeight: '600',
   },
 });

@@ -25,6 +25,7 @@ import {
   scaleIngredients,
 } from '@cook/core';
 import { STRINGS } from '../constants/strings.js';
+import { SubstituteModal } from './SubstituteModal.js';
 
 /** Giá trị phần ăn nhỏ nhất cho phép trên màn hình */
 const MIN_SERVINGS_LIMIT = 1;
@@ -52,6 +53,9 @@ export function RecipeDetailScreen({
 
   // Tiêu chí tối ưu lịch nấu: mặc định 'fastest' (D5)
   const [optimizationMode, setOptimizationMode] = useState<OptimizationMode>('fastest');
+
+  // Modal Thay hoặc bỏ nguyên liệu (T18)
+  const [substituteModalVisible, setSubstituteModalVisible] = useState<boolean>(false);
 
   // Tải chi tiết món ăn từ CSDL SQLite
   useEffect(() => {
@@ -218,16 +222,17 @@ export function RecipeDetailScreen({
                 ))}
               </View>
 
-              {/* Nút "Thay hoặc bỏ" bị khóa disabled chờ T18 AI (D4) */}
+              {/* Nút "Thay hoặc bỏ" (T18) - trước đó ở T06 disabled={true} */}
               <TouchableOpacity
-                style={styles.disabledAiButton}
-                disabled={true}
+                style={styles.activeAiButton}
+                onPress={() => setSubstituteModalVisible(true)}
                 accessibilityLabel={STRINGS.detail.replaceOrRemoveButtonText}
+                disabled={false} /* disabled={true} */
               >
-                <Text style={styles.disabledAiButtonText}>
+                <Text style={styles.activeAiButtonText}>
                   ✨ {STRINGS.detail.replaceOrRemoveButtonText}
                 </Text>
-                <Text style={styles.disabledAiButtonSubtext}>
+                <Text style={styles.activeAiButtonSubtext}>
                   {STRINGS.detail.replaceOrRemoveDisabledNotice}
                 </Text>
               </TouchableOpacity>
@@ -351,6 +356,14 @@ export function RecipeDetailScreen({
           </View>
         )}
       </ScrollView>
+
+      {recipe ? (
+        <SubstituteModal
+          visible={substituteModalVisible}
+          onClose={() => setSubstituteModalVisible(false)}
+          recipe={recipe}
+        />
+      ) : null}
     </SafeAreaView>
   );
 }
@@ -671,5 +684,25 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '800',
     color: '#022c22',
+  },
+  activeAiButton: {
+    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+    borderColor: '#10b981',
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    marginTop: 12,
+  },
+  activeAiButtonText: {
+    color: '#10b981',
+    fontSize: 15,
+    fontWeight: '700',
+    marginBottom: 2,
+  },
+  activeAiButtonSubtext: {
+    color: '#94a3b8',
+    fontSize: 12,
   },
 });

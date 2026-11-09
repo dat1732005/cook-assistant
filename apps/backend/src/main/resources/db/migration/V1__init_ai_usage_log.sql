@@ -1,0 +1,17 @@
+CREATE TABLE IF NOT EXISTS anonymous_device (
+    device_hash VARCHAR(64) PRIMARY KEY,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    last_seen_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS ai_usage_log (
+    id BIGSERIAL PRIMARY KEY,
+    device_hash VARCHAR(64) NOT NULL,
+    endpoint VARCHAR(64) NOT NULL,
+    prompt_tokens INT DEFAULT 0,
+    completion_tokens INT DEFAULT 0,
+    total_tokens INT DEFAULT 0,
+    estimated_cost DOUBLE PRECISION DEFAULT 0.0,
+    status VARCHAR(32) NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
