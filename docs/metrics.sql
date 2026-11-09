@@ -51,24 +51,33 @@ cohort_summary AS (
         COALESCE(SUM(returned_second_dish), 0) AS so_nguoi_quay_lai_mon_thu_hai
     FROM device_cohorts
 ),
+completed_sessions AS (
+    -- Tập các phiên nấu đã bấm hoàn tất (dùng để tính tỉ lệ phiên hoàn tất có sửa kho)
+    SELECT DISTINCT session_id
+    FROM telemetry_event
+    WHERE event_type = 'session_completed'
+      AND session_id IS NOT NULL
+),
 event_summary AS (
     SELECT
-        COUNT(DISTINCT CASE WHEN event_type = 'session_started' THEN session_id END) AS tong_phien_bat_dau,
-        COUNT(DISTINCT CASE WHEN event_type = 'session_completed' THEN session_id END) AS tong_phien_hoan_tat,
-        COALESCE(SUM(CASE WHEN event_type = 'step_back' THEN 1 ELSE 0 END), 0) AS so_lan_lui_buoc,
-        COALESCE(SUM(CASE WHEN event_type = 'session_abandoned' THEN 1 ELSE 0 END), 0) AS so_lan_thoat_giua_chung,
-        COALESCE(SUM(CASE WHEN event_type IN ('step_back', 'session_abandoned') THEN 1 ELSE 0 END), 0) AS so_buoc_bo_qua_hoac_quay_lai,
-        COALESCE(SUM(CASE WHEN event_type = 'pantry_adjusted_after_cook' THEN 1 ELSE 0 END), 0) AS so_lan_sua_kho_sau_nau,
-        COALESCE(SUM(CASE WHEN event_type = 'ai_asked' THEN 1 ELSE 0 END), 0) AS tong_luot_hoi_ai,
-        COALESCE(SUM(CASE WHEN event_type = 'ai_asked' AND ai_kind = 'substitute' THEN 1 ELSE 0 END), 0) AS so_luot_hoi_ai_thay_nguyen_lieu,
-        COALESCE(SUM(CASE WHEN event_type = 'ai_asked' AND helpful IS TRUE THEN 1 ELSE 0 END), 0) AS so_danh_gia_huu_ich,
-        COALESCE(SUM(CASE WHEN event_type = 'ai_asked' AND helpful IS FALSE THEN 1 ELSE 0 END), 0) AS so_danh_gia_khong_huu_ich,
-        COALESCE(SUM(CASE WHEN event_type = 'ai_asked' AND helpful IS NOT NULL THEN 1 ELSE 0 END), 0) AS tong_danh_gia_ai
-    FROM telemetry_event
+        COUNT(DISTINCT CASE WHEN t.event_type = 'session_started' THEN t.session_id END) AS tong_phien_bat_dau,
+        COUNT(DISTINCT CASE WHEN t.event_type = 'session_completed' THEN t.session_id END) AS tong_phien_hoan_tat,
+        COALESCE(SUM(CASE WHEN t.event_type = 'step_back' THEN 1 ELSE 0 END), 0) AS so_lan_lui_buoc,
+        COALESCE(SUM(CASE WHEN t.event_type = 'session_abandoned' THEN 1 ELSE 0 END), 0) AS so_lan_thoat_giua_chung,
+        COALESCE(SUM(CASE WHEN t.event_type IN ('step_back', 'session_abandoned') THEN 1 ELSE 0 END), 0) AS so_buoc_bo_qua_hoac_quay_lai,
+        COUNT(DISTINCT CASE WHEN t.event_type = 'pantry_adjusted_after_cook' AND comp.session_id IS NOT NULL THEN t.session_id END) AS so_phien_hoan_tat_co_sua_kho,
+        COALESCE(SUM(CASE WHEN t.event_type = 'pantry_adjusted_after_cook' THEN 1 ELSE 0 END), 0) AS so_lan_sua_kho_sau_nau,
+        COALESCE(SUM(CASE WHEN t.event_type = 'ai_asked' THEN 1 ELSE 0 END), 0) AS tong_luot_hoi_ai,
+        COALESCE(SUM(CASE WHEN t.event_type = 'ai_asked' AND t.ai_kind = 'substitute' THEN 1 ELSE 0 END), 0) AS so_luot_hoi_ai_thay_nguyen_lieu,
+        COALESCE(SUM(CASE WHEN t.event_type = 'ai_asked' AND t.helpful IS TRUE THEN 1 ELSE 0 END), 0) AS so_danh_gia_huu_ich,
+        COALESCE(SUM(CASE WHEN t.event_type = 'ai_asked' AND t.helpful IS FALSE THEN 1 ELSE 0 END), 0) AS so_danh_gia_khong_huu_ich,
+        COALESCE(SUM(CASE WHEN t.event_type = 'ai_asked' AND t.helpful IS NOT NULL THEN 1 ELSE 0 END), 0) AS tong_danh_gia_ai
+    FROM telemetry_event t
+    LEFT JOIN completed_sessions comp ON comp.session_id = t.session_id
 ),
 ai_cost_summary AS (
     SELECT
-        COALESCE(SUM(estimated_cost), 0) AS tong_chi_phi_ai
+        CAST(COALESCE(SUM(estimated_cost), 0) AS DECIMAL(18, 6)) AS tong_chi_phi_ai
     FROM ai_usage_log
 )
 SELECT
@@ -81,25 +90,26 @@ SELECT
     cs.so_nguoi_quay_lai_mon_thu_hai,
     COALESCE(ROUND(cs.so_nguoi_quay_lai_mon_thu_hai * 1.0 / NULLIF(cs.tong_nguoi_moi_bat_dau, 0), 4), 0) AS ti_le_quay_lai_nau_mon_thu_hai,
 
-    -- 3. Số bước bị bỏ qua hoặc quay lại (lùi bước + thoát giữa chừng)
+    -- 3. Số bước bị bỏ qua hoặc quay lại (tổng số lần lùi bước + thoát giữa chừng, chia số phiên)
     es.tong_phien_bat_dau,
     es.so_lan_lui_buoc,
     es.so_lan_thoat_giua_chung,
     es.so_buoc_bo_qua_hoac_quay_lai,
     COALESCE(ROUND(es.so_buoc_bo_qua_hoac_quay_lai * 1.0 / NULLIF(es.tong_phien_bat_dau, 0), 4), 0) AS tb_bo_qua_hoac_quay_lai_moi_phien,
 
-    -- 4. Tỉ lệ sửa kho sau khi nấu (số lần chỉnh lượng tự trừ / tổng phiên hoàn tất)
+    -- 4. Tỉ lệ sửa kho sau khi nấu (số phiên hoàn tất có sửa kho / tổng số phiên hoàn tất)
     es.tong_phien_hoan_tat,
+    es.so_phien_hoan_tat_co_sua_kho,
     es.so_lan_sua_kho_sau_nau,
-    COALESCE(ROUND(es.so_lan_sua_kho_sau_nau * 1.0 / NULLIF(es.tong_phien_hoan_tat, 0), 4), 0) AS ti_le_sua_kho_sau_khi_nau,
+    COALESCE(ROUND(es.so_phien_hoan_tat_co_sua_kho * 1.0 / NULLIF(es.tong_phien_hoan_tat, 0), 4), 0) AS ti_le_sua_kho_sau_khi_nau,
 
-    -- 5. Tỉ lệ hỏi AI thay nguyên liệu (số lượt hỏi trên mỗi phiên nấu + tỉ lệ đánh giá hữu ích)
+    -- 5. Hỏi AI thay nguyên liệu (tổng số lượt hỏi chia số phiên, cộng thêm tỉ lệ hữu ích = hữu ích / số lượt hỏi)
     es.so_luot_hoi_ai_thay_nguyen_lieu,
     es.tong_luot_hoi_ai,
-    COALESCE(ROUND(es.so_luot_hoi_ai_thay_nguyen_lieu * 1.0 / NULLIF(es.tong_phien_bat_dau, 0), 4), 0) AS ti_le_hoi_ai_thay_nguyen_lieu,
+    COALESCE(ROUND(es.tong_luot_hoi_ai * 1.0 / NULLIF(es.tong_phien_bat_dau, 0), 4), 0) AS ti_le_hoi_ai_thay_nguyen_lieu,
     es.so_danh_gia_huu_ich,
     es.so_danh_gia_khong_huu_ich,
-    COALESCE(ROUND(es.so_danh_gia_huu_ich * 1.0 / NULLIF(es.tong_danh_gia_ai, 0), 4), 0) AS ti_le_ai_huu_ich,
+    COALESCE(ROUND(es.so_danh_gia_huu_ich * 1.0 / NULLIF(es.tong_luot_hoi_ai, 0), 4), 0) AS ti_le_ai_huu_ich,
 
     -- 6. Chi phí AI trung bình mỗi phiên nấu (tổng chi phí AI / tổng số phiên nấu)
     ac.tong_chi_phi_ai,
