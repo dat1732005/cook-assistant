@@ -57,6 +57,10 @@ const EXPECTED_HASH_CATALOG = {
     description: 'Kỳ vọng Backend & AI T14-T15',
     normalizedSha256: 'c8b482d691e684fc098e27c2b691ece633d6a79fb4040e055e663fd8e3b859ff',
   },
+  'T19.md': {
+    description: 'Kỳ vọng 6 chỉ số đo lường T19',
+    normalizedSha256: '691d7ceed08fbc8c7715b1c71b7cdb37bf9b300b8f4535af5a1d42e420de525a',
+  },
   'README.md': {
     description: 'Mô tả thư mục expected',
     normalizedSha256: '80e5d54528255fd0bbaf24e647f4b219f3a81b1522dc2a5c6f05111e556f140c',
