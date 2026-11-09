@@ -21,6 +21,7 @@ import {
 import type { Recipe, PantryService } from '@cook/core';
 import { useNavigation } from '../navigation/router.js';
 import { STRINGS } from '../constants/strings.js';
+import type { TelemetryService } from '../services/telemetry-service.js';
 
 export interface DeductedItemSummary {
   lotId?: string;
@@ -37,6 +38,7 @@ export interface FinishScreenProps {
   sessionId?: string;
   pantryService?: PantryService;
   deductedItems?: DeductedItemSummary[];
+  telemetryService?: TelemetryService;
 }
 
 export function FinishScreen({
@@ -45,6 +47,7 @@ export function FinishScreen({
   sessionId,
   pantryService,
   deductedItems = [],
+  telemetryService,
 }: FinishScreenProps): React.JSX.Element {
   const { replace } = useNavigation();
   const name = dishName || recipe?.name || 'Món ăn';
@@ -111,6 +114,15 @@ export function FinishScreen({
         )
       );
       setEditingLotId(null);
+
+      // Ghi sự kiện sửa kho sau khi nấu phục vụ chỉ số T19.1 (ẩn danh, không gửi chi tiết nguyên liệu)
+      if (telemetryService) {
+        await telemetryService.recordPantryAdjustedAfterCook({
+          sessionId,
+          recipeSlug: recipe?.slug,
+        });
+        void telemetryService.flushPendingEvents();
+      }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Lỗi khi cập nhật kho';
       Alert.alert('Lỗi', msg);

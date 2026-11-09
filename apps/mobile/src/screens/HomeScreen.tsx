@@ -38,6 +38,7 @@ export interface HomeScreenProps {
   onSelectRecipe: (slug: string) => void;
   pantryService?: PantryService;
   onOpenPantry?: () => void;
+  onOpenSettings?: () => void;
 }
 
 /** Các mốc thời gian lọc phổ biến (phút) */
@@ -54,6 +55,7 @@ export function HomeScreen({
   onSelectRecipe,
   pantryService,
   onOpenPantry,
+  onOpenSettings,
 }: HomeScreenProps): React.JSX.Element {
   const [recipes, setRecipes] = useState<RecipeSummary[]>([]);
   const [scoredMap, setScoredMap] = useState<Record<string, ScoredRecipe>>({});
@@ -186,6 +188,18 @@ export function HomeScreen({
                 ⚙ {STRINGS.home.profileButtonText}
               </Text>
             </TouchableOpacity>
+            {onOpenSettings && (
+              <TouchableOpacity
+                style={styles.settingsHeaderButton}
+                onPress={onOpenSettings}
+                accessibilityLabel={STRINGS.home.settingsButtonText}
+                testID="home-open-settings-button"
+              >
+                <Text style={styles.settingsHeaderButtonText}>
+                  🛠️ {STRINGS.home.settingsButtonText}
+                </Text>
+              </TouchableOpacity>
+            )}
           </View>
         </View>
 
@@ -453,6 +467,19 @@ const styles = StyleSheet.create({
   },
   profileButtonText: {
     color: '#333333',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  settingsHeaderButton: {
+    backgroundColor: '#EEF2FF',
+    borderWidth: 1,
+    borderColor: '#A5B4FC',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  settingsHeaderButtonText: {
+    color: '#3730A3',
     fontSize: 13,
     fontWeight: '600',
   },

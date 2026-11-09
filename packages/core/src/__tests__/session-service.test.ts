@@ -386,6 +386,22 @@ describe('T07: SessionService & Trạng thái phiên nấu (đối chiếu docs/
         expect(actualReplan).toEqual(s3Tampered.replan);
       }).toThrow();
     });
+
+    it('Lùi bước back(stepId, now): đưa bước đã hoàn thành về pending, đẩy bước sau về next và ghi lịch sử lùi bước (T07.3)', async () => {
+      await service.start({ steps: t07Steps }, { now: 0 });
+      await service.startPassive('A', 20);
+      const afterB = await service.markDone('B', 100);
+      expect(afterB.snapshot.now_group).toEqual(['C']);
+      expect(afterB.snapshot.step_states['B']).toBe('completed');
+
+      const backSnap = await service.back('B', 110);
+      expect(backSnap.step_states['B']).toBe('pending');
+      expect(backSnap.now_group).toContain('B');
+      expect(backSnap.now_group).not.toContain('C');
+      expect(backSnap.next).toContain('C');
+      expect(backSnap.waiting).toEqual(['A']);
+      expect(service.getStepBackHistory()).toEqual([{ stepId: 'B', at: 110 }]);
+    });
   });
 });
 
