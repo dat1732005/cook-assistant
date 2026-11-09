@@ -13,14 +13,14 @@
 | **T14 – T18** | Backend Spring Boot, kiểm tra env khởi động, giới hạn cửa sổ trượt, `MockAiProvider`, `SafetyScanService`, `SafetyRules`, `AiClient`, `SubstituteModal`, header `X-AI-Mock` | **ĐÃ GỘP MAIN** | `main` | Khớp khối JSON `RSU` của `docs/expected/T14.md` |
 | **T19** | Đo lường ẩn danh `TelemetryService`, gửi lô `POST /v1/events`, màn `Cài đặt` opt-out, truy vấn 6 chỉ số `docs/metrics.sql` | **ĐÃ GỘP MAIN** | `main` | Khớp `docs/expected/T19.md` sai số `< 0.0001` |
 | **T20** | Cấu hình 3 môi trường Android, `eas.json`, `applicationId` tạm `com.cook.app` + chốt chặn `production`, quyền tối thiểu, tách `console.log`, `docs/android-release.md`, Play skeletons | **ĐÃ GỘP MAIN** | `main` | Commit gộp `616bf2f` |
-| **T20b** | Tích hợp `expo-keep-awake` vào `CookScreen` + test giả; thêm `POST /v1/ai/feedback` ẩn danh kiểu `ai_wrong_answer`; khung HTTP `RealAiProvider` | **HOÀN TẤT** | `task/T20b` | Chuẩn bị gộp vào `main` trước khi làm T21 |
-| **T21** | Đóng gói Docker nhiều tầng, `docker-compose`, Caddy HTTPS, `.env.example`, sao lưu/khôi phục, log STDOUT, hướng dẫn VPS/Managed, CORS & Rate Limit qua env | **CHƯA LÀM** | `task/T21` | Bắt đầu từ `main` sau T20b |
+| **T20b** | Tích hợp `expo-keep-awake` vào `CookScreen` + test giả; thêm `POST /v1/ai/feedback` ẩn danh kiểu `ai_wrong_answer`; khung HTTP `RealAiProvider` | **ĐÃ GỘP MAIN** | `main` | Commit gộp `8f7131f` |
+| **T21** | Đóng gói Docker nhiều tầng, `docker-compose` (2 hướng VPS/Managed), Caddy HTTPS, `deploy/.env.example`, sao lưu/khôi phục `pg_dump`, log STDOUT, `docs/deploy-vps.md` & `docs/deploy-managed.md`, CORS & Rate Limit qua env | **CHỜ DUYỆT (CHƯA CHẠY DOCKER)** | `task/T21` | `docker compose config` & `./mvnw test` xanh; chạy container thực tế chờ Docker daemon / VPS |
 
 ---
 
 ## 2. Việc kế tiếp
-1. **Gộp `task/T20b` vào `main`** và kiểm tra CI xanh.
-2. **Triển khai T21** trên nhánh `task/T21` xuất phát từ `main` sau T20b.
+1. **Nghiệm thu thực tế T21 trên máy có Docker hoặc VPS Ubuntu:** chạy `docker build`, `docker compose up -d`, kiểm tra `/health` và diễn tập `backup-db.sh` / `restore-db.sh` (hiện ghi `CHƯA CHẠY` do máy dev không bật Docker daemon).
+2. **Chờ lệnh duyệt T21** trước khi triển khai **T22** (chưa làm T22).
 3. **Kiểm thử trên thiết bị Android thật (`T08`, `T09`, `T20`):** build bản `preview`, cài đặt APK, đo ma trận hẹn giờ và luồng gọi backend staging (hiện ghi `CHƯA NGHIỆM THU: chưa có máy thật`).
 
 ---

@@ -61,5 +61,11 @@ coverage/
 *.log
 npm-debug.log*
 
+# Database backups & dumps (T21.5)
+backups/
+deploy/backups/
+*.sql.gz
+*.dump
+
 # pnpm
 .pnpm-store/

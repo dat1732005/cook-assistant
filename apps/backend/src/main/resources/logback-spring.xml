@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  File: apps/backend/src/main/resources/logback-spring.xml
+  Làm gì: Cấu hình ghi log tập trung hoàn toàn ra đầu ra chuẩn (STDOUT) cho môi trường container (T21.6).
+  Ai gọi: Spring Boot LoggingSystem khi khởi động ứng dụng backend.
+  Bám theo: docs/tasks.md mục T21.6 (không ghi tệp log ra ổ đĩa container, tương thích Docker và mọi PaaS).
+-->
+<configuration scan="false">
+    <springProperty scope="context" name="APP_NAME" source="spring.application.name" defaultValue="cook-backend"/>
+    <springProperty scope="context" name="ROOT_LOG_LEVEL" source="logging.level.root" defaultValue="INFO"/>
+
+    <!-- Chỉ định Appender duy nhất ghi trực tiếp ra STDOUT -->
+    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <target>System.out</target>
+        <encoder>
+            <charset>UTF-8</charset>
+            <pattern>%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} %-5level [${APP_NAME:-cook-backend}] [%thread] %logger{36} : %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <root level="${ROOT_LOG_LEVEL:-INFO}">
+        <appender-ref ref="STDOUT"/>
+    </root>
+</configuration>
+

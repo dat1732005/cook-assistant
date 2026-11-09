@@ -33,79 +33,79 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @DisplayName("T15-fix: Kiểm tra header X-AI-Mock trên mọi phản hồi AI khi dùng bản giả")
 class AiMockHeaderTest {
 
-                  
-                    private WebApplication
+    @Autowired
+    private WebApplicationContext wac;
 
-                  
-                    private AiMockHeaderFilter aiMockH
+    @Autowired
+    private AiMockHeaderFilter aiMockHeaderFilter;
 
-                  
-                    private RateLimitFilter rate
+    @Autowired
+    private RateLimitFilter rateLimitFilter;
 
-             
-                    @DisplayName("Mock mode: POST /v1/ai/substitute (200) và POST /v1/ai/ask bị tắt (403) và vượt giới hạn (429) đều có header X-AI-
-                    void mockProviderAlwaysReturnsXAiMockHeader() throws
-                                        MockMvc mockMvc = MockMvcBuilders
-                                                                                
-                                         
+    @Test
+    @DisplayName("Mock mode: POST /v1/ai/substitute (200) và POST /v1/ai/ask bị tắt (403) và vượt giới hạn (429) đều có header X-AI-Mock: true")
+    void mockProviderAlwaysReturnsXAiMockHeader() throws Exception {
+        MockMvc mockMvc = MockMvcBuilders.webAppContextSetup(wac)
+                .addFilters(aiMockHeaderFilter, rateLimitFilter)
+                .build();
 
-                                    
-                                 
-                                                                    
-                                                         
-                                                            
-                                                  
-                                 
-                                    
+        String subJson = """
+                {
+                  "recipeId": "trung-chien-ca-chua",
+                  "action": "substitute",
+                  "ingredientId": "hanh-la",
+                  "role": "flavor"
+                }
+                """;
 
-                                        // 1. Gọi /v1/ai/substitute thành công -> c
-                                        mockMvc.perform(p
-                                                        .header("X-Device-I
-                                                        .contentType(Med
-                                                  
-                                                           
-                                                                                .andExpect(header
+        // 1. Gọi /v1/ai/substitute thành công -> có header X-AI-Mock: true
+        mockMvc.perform(post("/v1/ai/substitute")
+                        .header("X-Device-Id", "mock-header-dev-1")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(subJson))
+                .andExpect(status().isOk())
+                .andExpect(header().string(AiController.MOCK_AI_HEADER, "true"));
 
-                                        // 2. Gọi /v1/ai/ask khi tắt (403) -> vẫn c
-                                        mockMvc.pe
-                                                        .header("X-Device-I
-                                                        .contentType(Med
-                                                        .content("{\"question\"
-                                                                  
-                                                                                .andExpect(header
+        // 2. Gọi /v1/ai/ask khi tắt (403) -> vẫn có header X-AI-Mock: true
+        mockMvc.perform(post("/v1/ai/ask")
+                        .header("X-Device-Id", "mock-header-dev-1")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"question\":\"Lửa to hay nhỏ?\"}"))
+                .andExpect(status().isForbidden())
+                .andExpect(header().string(AiController.MOCK_AI_HEADER, "true"));
 
-                                        // 3. Gọi thêm 2 lượt nữa để vượt ngưỡng 3 lượt -> 429 
-                // ẫn c
-                        // ader
-                                // I-Mo
-                                        // true
-                                                pe
-                                                            
+        // 3. Gọi thêm 2 lượt nữa để vượt ngưỡng 3 lượt -> 429 vẫn có header X-AI-Mock: true
+        mockMvc.perform(post("/v1/ai/substitute")
+                        .header("X-Device-Id", "mock-header-dev-1")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(subJson))
+                .andExpect(status().isOk());
 
-                
-                                
-                                        
-                                                pe
-                                                                .h
-                                                                        .contentTy
-         
+        mockMvc.perform(post("/v1/ai/substitute")
+                        .header("X-Device-Id", "mock-header-dev-1")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(subJson))
+                .andExpect(status().isTooManyRequests())
+                .andExpect(header().string(AiController.MOCK_AI_HEADER, "true"));
+    }
 
-        
-            
-                
-                        @Test
-                                    @DisplayName("Moc
-                                                void moc
-                                                                A
-                                      
-                                        MockMvc mockMvc = MockMvcBuilders.standaloneSetup(new AiController(m
+    @Test
+    @DisplayName("Mock mode bật ask: POST /v1/ai/ask (200) trả về header X-AI-Mock: true")
+    void mockProviderAskEnabledReturnsHeader() throws Exception {
+        AiService mockAskService = new AiService(
+                new MockAiProvider(),
+                new SafetyScanService(),
+                mock(AiUsageLogRepository.class),
+                true
+        );
+        MockMvc mockMvc = MockMvcBuilders.standaloneSetup(new AiController(mockAskService)).build();
 
-                                        mockMvc.pe
-                                                        .contentType(Med
-                                                        .content("{\"question
-                                                           
-                                                                                .andExpect(header
-         
+        mockMvc.perform(post("/v1/ai/ask")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"question\":\"Đun mấy phút?\"}"))
+                .andExpect(status().isOk())
+                .andExpect(header().string(AiController.MOCK_AI_HEADER, "true"));
+    }
 
     @Test
     @DisplayName("Real mode: phản hồi AI thật KHÔNG đính kèm header X-AI-Mock")
@@ -143,15 +143,16 @@ class AiMockHeaderTest {
                 .setControllerAdvice(new GlobalExceptionHandler())
                 .build();
 
-                                                        .
-                                                                .andExpe
-                                                        
-                                                
-                                
+        mockMvc.perform(post("/v1/ai/substitute")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"recipeId\":\"mon-1\",\"action\":\"omit\",\"ingredientId\":\"hanh-la\"}"))
+                .andExpect(status().isOk())
+                .andExpect(header().doesNotExist(AiController.MOCK_AI_HEADER));
 
-                                                  
-                                                                .andExpe
-                                                        
-                                                
-                                
-        
+        mockMvc.perform(post("/v1/ai/ask")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"question\":\"Đun mấy phút?\"}"))
+                .andExpect(status().isOk())
+                .andExpect(header().doesNotExist(AiController.MOCK_AI_HEADER));
+    }
+}

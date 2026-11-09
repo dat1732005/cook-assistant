@@ -1,0 +1,6 @@
+# Đảm bảo script Shell và Maven Wrapper luôn giữ chuẩn LF khi chạy trong container Linux / VPS Ubuntu
+*.sh text eol=lf
+mvnw text eol=lf
+Dockerfile text eol=lf
+Caddyfile text eol=lf
+
