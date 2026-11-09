@@ -12,7 +12,7 @@
  * Bám theo: Mục T09 trong docs/tasks.md và docs/expected/T07.md.
  */
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   StyleSheet,
   View,
@@ -28,7 +28,13 @@ import type { Recipe, RecipeStep, SqlDriver } from '@cook/core';
 import { SessionService, type SessionSnapshot } from '@cook/core';
 import { useNavigation } from '../navigation/router.js';
 import { STRINGS } from '../constants/strings.js';
-import { AiClient, defaultAiClient, formatAiMockNotice } from '../services/ai-client.js';
+import {
+  AiClient,
+  defaultAiClient,
+  formatAiMockNotice,
+  generateAnonymousQuestionId,
+} from '../services/ai-client.js';
+import { disableCookKeepAwake, syncCookKeepAwake } from '../services/keep-awake-service.js';
 import type { TelemetryService } from '../services/telemetry-service.js';
 
 export interface CookScreenProps {
@@ -77,9 +83,35 @@ export function CookScreen({
   const [feedbackSent, setFeedbackSent] = useState<boolean>(false);
   const [helpfulMarked, setHelpfulMarked] = useState<boolean | null>(null);
   const [aiTelemetryEventId, setAiTelemetryEventId] = useState<string | null>(null);
+  const [lastAskQuestionId, setLastAskQuestionId] = useState<string | null>(null);
+  const hasExitedCookScreenRef = useRef<boolean>(false);
+
+  // Đồng bộ giữ sáng màn hình (expo-keep-awake): bật khi vào phiên nấu, tắt khi xong/thoát/gạt công tắc
+  useEffect(() => {
+    if (hasExitedCookScreenRef.current) {
+      void disableCookKeepAwake();
+      return;
+    }
+    void syncCookKeepAwake({
+      sessionStatus: snapshot?.session_status,
+      userPreferenceEnabled: isKeepAwakeActive,
+      isExited: false,
+    });
+  }, [snapshot?.session_status, isKeepAwakeActive]);
+
+  // Bảo đảm luôn tắt giữ sáng khi rời hoặc hủy màn hình CookScreen
+  useEffect(() => {
+    hasExitedCookScreenRef.current = false;
+    return () => {
+      hasExitedCookScreenRef.current = true;
+      void disableCookKeepAwake();
+    };
+  }, []);
 
   const handleAskAi = useCallback(async () => {
     if (!aiQuestion.trim()) return;
+    const questionId = generateAnonymousQuestionId('ask');
+    setLastAskQuestionId(questionId);
     setAiLoading(true);
     setFeedbackSent(false);
     setHelpfulMarked(null);
@@ -145,15 +177,18 @@ export function CookScreen({
     }
     try {
       await aiClient.reportFeedback({
-        question: aiQuestion,
-        answer: aiAnswer?.answer,
+        questionId: lastAskQuestionId ?? generateAnonymousQuestionId('ask'),
+        feedbackType: 'ask_wrong_answer',
+        sessionId: snapshot?.id,
+        recipeSlug: recipe.slug,
+        stepId: snapshot?.now_group[0],
       });
       setFeedbackSent(true);
       Alert.alert('Đã gửi', 'Cảm ơn bạn đã phản hồi câu trả lời sai.');
     } catch {
       setFeedbackSent(true);
     }
-  }, [aiClient, aiQuestion, aiAnswer, telemetryService, aiTelemetryEventId]);
+  }, [aiClient, lastAskQuestionId, snapshot, recipe.slug, telemetryService, aiTelemetryEventId]);
 
   // Khởi tạo phiên nấu khi vào màn hình
   useEffect(() => {
@@ -245,8 +280,11 @@ export function CookScreen({
 
     setSnapshot(res.snapshot);
 
-    // Nếu toàn bộ món ăn đã hoàn tất -> ghi sự kiện hoàn tất và chuyển sang FinishScreen
+    // Nếu toàn bộ món ăn đã hoàn tất -> tắt giữ sáng, ghi sự kiện hoàn tất và chuyển sang FinishScreen
     if (res.snapshot.session_status === 'done') {
+      hasExitedCookScreenRef.current = true;
+      setIsKeepAwakeActive(false);
+      await disableCookKeepAwake();
       if (telemetryService) {
         await telemetryService.recordSessionCompleted({
           sessionId: res.snapshot.id,
@@ -336,7 +374,12 @@ export function CookScreen({
         {
           text: STRINGS.common.back,
           style: 'default',
-          onPress: () => goBack(),
+          onPress: () => {
+            hasExitedCookScreenRef.current = true;
+            setIsKeepAwakeActive(false);
+            void disableCookKeepAwake();
+            goBack();
+          },
         },
       ]
     );
@@ -356,6 +399,9 @@ export function CookScreen({
           text: STRINGS.cook.abandonButton,
           style: 'destructive',
           onPress: async () => {
+            hasExitedCookScreenRef.current = true;
+            setIsKeepAwakeActive(false);
+            await disableCookKeepAwake();
             if (telemetryService) {
               await telemetryService.recordSessionAbandoned({
                 sessionId: snapshot?.id,
@@ -402,7 +448,7 @@ export function CookScreen({
       >
         <Text style={styles.keepAwakeDot}>{isKeepAwakeActive ? '●' : '○'}</Text>
         <Text style={styles.keepAwakeText}>
-          {isKeepAwakeActive ? STRINGS.cook.keepAwakeActive : 'Màn hình tự tắt'}
+          {isKeepAwakeActive ? STRINGS.cook.keepAwakeActive : STRINGS.cook.keepAwakeInactive}
         </Text>
       </TouchableOpacity>
 

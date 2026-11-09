@@ -27,6 +27,7 @@ import {
   AiClient,
   defaultAiClient,
   formatAiMockNotice,
+  generateAnonymousQuestionId,
   SubstituteResultData,
 } from '../services/ai-client.js';
 import type { TelemetryService } from '../services/telemetry-service.js';
@@ -65,6 +66,7 @@ export function SubstituteModal({
   const [feedbackSent, setFeedbackSent] = useState<boolean>(false);
   const [helpfulMarked, setHelpfulMarked] = useState<boolean | null>(null);
   const [aiTelemetryEventId, setAiTelemetryEventId] = useState<string | null>(null);
+  const [lastSubQuestionId, setLastSubQuestionId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // Tìm nguyên liệu được chọn trong công thức
@@ -102,6 +104,8 @@ export function SubstituteModal({
     setFeedbackSent(false);
     setHelpfulMarked(null);
     setAiTelemetryEventId(null);
+    const questionId = generateAnonymousQuestionId('sub');
+    setLastSubQuestionId(questionId);
     setIsAiMock(false);
 
     try {
@@ -177,8 +181,10 @@ export function SubstituteModal({
     }
     try {
       await aiClient.reportFeedback({
-        ingredientId: selectedIngredient,
-        comment: `Báo cáo câu trả lời không chính xác cho nguyên liệu ${selectedIngredient}`,
+        questionId: lastSubQuestionId ?? generateAnonymousQuestionId('sub'),
+        feedbackType: 'substitute_wrong_answer',
+        sessionId,
+        recipeSlug: recipe.slug,
       });
       setFeedbackSent(true);
       Alert.alert('Đã gửi phản hồi', 'Cảm ơn bạn! Đóng góp của bạn giúp cải thiện trợ lý nấu ăn.');
@@ -186,7 +192,7 @@ export function SubstituteModal({
       setFeedbackSent(true);
       Alert.alert('Ghi nhận', 'Đã ghi nhận phản hồi câu trả lời sai.');
     }
-  }, [aiClient, selectedIngredient, telemetryService, aiTelemetryEventId]);
+  }, [aiClient, lastSubQuestionId, sessionId, recipe.slug, telemetryService, aiTelemetryEventId]);
 
   // Áp dụng thay/bỏ nguyên liệu
   const handleConfirm = useCallback(() => {

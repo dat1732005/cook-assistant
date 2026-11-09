@@ -153,7 +153,7 @@ describe('T18: Màn Thay hoặc bỏ và Hỏi nhanh AI khi đang nấu', () => 
           return {
             ok: true,
             status: 200,
-            json: async () => ({ status: 'ok' }),
+            json: async () => ({ status: 'ok', eventType: 'ai_wrong_answer' }),
           };
         }
         return { ok: false, status: 404 };
@@ -165,8 +165,9 @@ describe('T18: Màn Thay hoặc bỏ và Hỏi nhanh AI khi đang nấu', () => 
       });
 
       const res = await client.reportFeedback({
-        ingredientId: 'Thịt ba chỉ',
-        comment: 'Gợi ý không phù hợp khẩu vị kho tộ',
+        questionId: 'q_sub_t18_1',
+        feedbackType: 'substitute_wrong_answer',
+        recipeSlug: 'thit-kho-to',
       });
 
       expect(res.success).toBe(true);

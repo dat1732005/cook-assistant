@@ -43,6 +43,12 @@ public class TelemetryEvent {
     @Column(name = "helpful")
     private Boolean helpful;
 
+    @Column(name = "question_id", length = 64)
+    private String questionId;
+
+    @Column(name = "feedback_type", length = 32)
+    private String feedbackType;
+
     @Column(name = "occurred_at", nullable = false)
     private Instant occurredAt;
 
@@ -84,6 +90,8 @@ public class TelemetryEvent {
     public Boolean getHelpful() { return helpful; }
     public Instant getOccurredAt() { return occurredAt; }
     public Instant getReceivedAt() { return receivedAt; }
+    public String getQuestionId() { return questionId; }
+    public String getFeedbackType() { return feedbackType; }
 
     public void setId(Long id) { this.id = id; }
     public void setEventId(String eventId) { this.eventId = eventId; }
@@ -94,6 +102,8 @@ public class TelemetryEvent {
     public void setRecipeSlug(String recipeSlug) { this.recipeSlug = recipeSlug; }
     public void setAiKind(String aiKind) { this.aiKind = aiKind; }
     public void setHelpful(Boolean helpful) { this.helpful = helpful; }
+    public void setQuestionId(String questionId) { this.questionId = questionId; }
+    public void setFeedbackType(String feedbackType) { this.feedbackType = feedbackType; }
     public void setOccurredAt(Instant occurredAt) { this.occurredAt = occurredAt; }
     public void setReceivedAt(Instant receivedAt) { this.receivedAt = receivedAt; }
 }

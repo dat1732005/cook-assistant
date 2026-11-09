@@ -1,46 +1,42 @@
 # Trạng thái dự án Trợ lý nấu ăn (docs/STATUS.md)
 
-*Tài liệu này theo dõi tiến độ tổng thể, trạng thái từng task, các quyết định và việc cần làm. Cập nhật vào cuối mỗi task.*
+*Tài liệu này theo dõi tiến độ tổng thể, trạng thái từng task, các hạng mục đang chờ và các quyết định đã chốt.*
 
 ---
 
-## 1. Bảng trạng thái các task (T01 – T06)
+## 1. Bảng trạng thái các task (T01 – T21)
 
-| Task | Tên / Nội dung chính | Trạng thái | Nhánh | Commit |
+| Task | Tên / Nội dung chính | Trạng thái | Nhánh | Ghi chú / Tham chiếu |
 | :--- | :--- | :--- | :--- | :--- |
-| **T01** | Cấu trúc Monorepo, pnpm workspace, cấu hình TypeScript strict, ESLint, Prettier, Spring Boot 4.1.0 backend | **ĐÃ XONG** | `main` | `bb63fe3` |
-| **T02** | Schema dữ liệu Zod, chuẩn hóa tên trường `snake_case` bám sát `docs/plan.md`, cơ chế R2/R3, kiểm thử đối chiếu `docs/field-names.md` | **ĐÃ XONG** | `main` | `4d35368`<br>*(nhánh `task/T02-fix` tại `e082fd5`)* |
-| **T03** | Khung dữ liệu rỗng chuẩn, script `scripts/validate-data.js` (kiểm tra toàn vẹn, cờ `--strict`, cờ `--report-missing`) | **ĐÃ XONG** | `main` | `8e88863`<br>*(nhánh `task/T03` tại `3ee6904`)* |
-| **T04** | Thuật toán Scheduler: `plan()`, `replan()`, `checkManualStart()`, kiểm tra chu trình, bám sát `docs/expected/T04.md` (123 tests) | **ĐÃ XONG** | `main` | `4746bd2`<br>*(nhánh `task/T04` tại `aa40aba`)* |
-| **T05** | Tầng CSDL SQLite (`SqlDriver` cho Node & Expo SQLite), `MigrationRunner`, đóng gói dữ liệu `bundle-data.js`, `RecipeRepo` lọc an toàn dị ứng (43 tests) | **ĐÃ XONG** | `main` | `7fce580`<br>*(nhánh `task/T05` tại `1836929`)* |
-| **T-INFRA** | Quản trị dự án: `AGENTS.md`, `docs/STATUS.md`, script `pnpm verify` (7 bước), quy trình GitHub Actions CI | **ĐÃ GỘP MAIN** | `main` | `2ca27ee`<br>*(nhánh `task/T-INFRA` tại `b7cf6d3`)* |
-| **T06** | Màn hình Chào mừng (lưu SQLite `user_profile`), Trang chủ (lọc thời gian/dị ứng), Chi tiết món (pure scaling đơn vị đời thường), tập trung chuỗi chữ, quy tắc dị ứng nullable và total_minutes (35 tests) | **ĐÃ GỘP MAIN** | `main` | `5a0f281`<br>*(nhánh `task/T06` tại `f76dec3`)* |
+| **T01 – T06** | Monorepo, Zod schema, validator rỗng, Scheduler T04, SQLite & RecipeRepo T05, T-INFRA, màn hình chính T06 | **ĐÃ GỘP MAIN** | `main` | Đầy đủ test core, mobile và `validate-data --strict` |
+| **T07 – T13** | Phiên nấu cục bộ `SessionService`, hẹn giờ nền, màn Chuẩn bị/Nấu/Hoàn tất, FIFO trừ kho, Quick-Add, gợi ý 2 chế độ & ước chừng | **ĐÃ GỘP MAIN** | `main` | Khớp `docs/expected/T07.md`, `T10.md`, `T12.md` |
+| **T14 – T18** | Backend Spring Boot, kiểm tra env khởi động, giới hạn cửa sổ trượt, `MockAiProvider`, `SafetyScanService`, `SafetyRules`, `AiClient`, `SubstituteModal`, header `X-AI-Mock` | **ĐÃ GỘP MAIN** | `main` | Khớp khối JSON `RSU` của `docs/expected/T14.md` |
+| **T19** | Đo lường ẩn danh `TelemetryService`, gửi lô `POST /v1/events`, màn `Cài đặt` opt-out, truy vấn 6 chỉ số `docs/metrics.sql` | **ĐÃ GỘP MAIN** | `main` | Khớp `docs/expected/T19.md` sai số `< 0.0001` |
+| **T20** | Cấu hình 3 môi trường Android, `eas.json`, `applicationId` tạm `com.cook.app` + chốt chặn `production`, quyền tối thiểu, tách `console.log`, `docs/android-release.md`, Play skeletons | **ĐÃ GỘP MAIN** | `main` | Commit gộp `616bf2f` |
+| **T20b** | Tích hợp `expo-keep-awake` vào `CookScreen` + test giả; thêm `POST /v1/ai/feedback` ẩn danh kiểu `ai_wrong_answer`; khung HTTP `RealAiProvider` | **HOÀN TẤT** | `task/T20b` | Chuẩn bị gộp vào `main` trước khi làm T21 |
+| **T21** | Đóng gói Docker nhiều tầng, `docker-compose`, Caddy HTTPS, `.env.example`, sao lưu/khôi phục, log STDOUT, hướng dẫn VPS/Managed, CORS & Rate Limit qua env | **CHƯA LÀM** | `task/T21` | Bắt đầu từ `main` sau T20b |
 
 ---
 
 ## 2. Việc kế tiếp
-1. **Chuẩn bị T07 (Chưa làm T07):** Xây dựng `SessionService` quản lý trạng thái phiên nấu ăn cục bộ trong SQLite (`cook_session`, `cook_step_state`, lưu bước đang nấu, bắt đầu, tạm dừng, hoàn thành).
+1. **Gộp `task/T20b` vào `main`** và kiểm tra CI xanh.
+2. **Triển khai T21** trên nhánh `task/T21` xuất phát từ `main` sau T20b.
+3. **Kiểm thử trên thiết bị Android thật (`T08`, `T09`, `T20`):** build bản `preview`, cài đặt APK, đo ma trận hẹn giờ và luồng gọi backend staging (hiện ghi `CHƯA NGHIỆM THU: chưa có máy thật`).
 
 ---
 
-## 3. Đang chờ dữ liệu từ chủ dự án
-- **Phê duyệt báo cáo T06:** Đợi chủ dự án duyệt nghiệm thu T06 và gộp nhánh `task/T06` vào `main`.
-- **Duyệt phương án bộ lọc thời gian:** Xác nhận quy tắc lọc thời gian khi món ăn bị thiếu hoặc `null` giá trị `total_minutes`.
-- **Dữ liệu thật công thức & nguyên liệu:** Bộ dữ liệu chính thức do chuyên gia/người biết nấu xác nhận (`source`, `confirmed_by`) để nạp vào `data/recipes/` theo quy tắc R1/R3.
+## 3. Đang chờ (chờ chủ dự án quyết định / cung cấp)
+- **Chọn nhà cung cấp AI thật cho `RealAiProvider` (T20b / T15):** `RealAiProvider.java` hiện mới dựng **khung gọi HTTP chung** theo interface `AiProvider` (`java.net.http.HttpClient`, đọc `COOK_AI_API_KEY`, `COOK_AI_ENDPOINT_URL`, `COOK_AI_MODEL`, timeout). **Chưa chọn nhà cung cấp AI cụ thể** (OpenAI / Gemini / Anthropic...); đang chờ chủ dự án chốt nhà cung cấp, mô hình, URL endpoint chính thức và hạn mức chi tiêu (`R6`). Nếu gọi vào `RealAiProvider` khi `COOK_AI_ENDPOINT_URL` còn để trống/`MISSING`, backend sẽ báo lỗi `AI_PROVIDER_NOT_CONFIGURED` (HTTP 503) chứ không trả dữ liệu giả.
+- **Tên gói Android chính thức (`applicationId`):** hiện để giá trị tạm `com.cook.app` trong `apps/mobile/app.config.ts` (bản build `production` cố ý chặn nếu chưa thay).
+- **URL máy chủ `staging` và `production` (`API_BASE_URL`):** hiện để trống; build EAS `preview` / `production` chờ cấp URL thật (riêng `production` bắt buộc `https://`).
+- **Bộ nhận diện thương hiệu thật:** thay thế các ảnh tạm `apps/mobile/assets/placeholder-*.png`.
+- **Nội dung pháp lý & khai báo Google Play (`T20.7`):** hoàn thiện các trường `MISSING` trong `docs/play/privacy-policy.skeleton.md` và `docs/play/data-safety.skeleton.md`.
+- **Dữ liệu thật `data/` & quy tắc an toàn (`R6`):** 3 món mẫu, quy đổi đơn vị, giá tham khảo, mã dị ứng, quy tắc nhiệt độ/bảo quản (cần xác nhận từ nguồn chính thức).
+- **Nghiệm thu thiết bị Android thật:** chạy thực tế `docs/timer-test-matrix.md` và bản APK `preview` (chưa có máy Android thật).
 
 ---
 
 ## 4. Quyết định đã chốt
-- **Nguồn sự thật:** JSON mẫu "Trứng chiên cà chua" trong `docs/plan.md` là nguồn sự thật cho tên trường (`snake_case`) của schema và CSDL.
-- **Hợp đồng kỳ vọng bất biến:** Các file trong `docs/expected/` do chủ dự án cung cấp trước khi làm task; Agent không được sửa đổi, kiểm tra mã băm SHA-256 đối chiếu toàn vẹn tự động.
-- **Quy tắc dữ liệu R1–R5:** Tuyệt đối không tự bịa dữ liệu vào `data/`. Thư mục `data/` giữ nguyên trạng thái rỗng sạch (đạt chuẩn `validate-data --strict`) cho tới khi có dữ liệu thật.
-- **Tách biệt dữ liệu giả lập:** Mọi dữ liệu thử nghiệm đặt trong `fixtures/`, đánh dấu `"synthetic": true`, chỉ nạp trong môi trường dev (`__DEV__`), tuyệt đối không đóng gói vào bản release sản phẩm (`production`).
-- **Tập trung chuỗi chữ giao diện:** 100% chuỗi chữ tiếng Việt của giao diện di động đặt tập trung tại `apps/mobile/src/constants/strings.ts`.
-- **Xử lý total_minutes:** Món ở trạng thái `reviewed` hoặc `published` thiếu `total_minutes` thì `validate-data` báo lỗi; bộ lọc thời gian `max_minutes` tự động loại các món thiếu `total_minutes`.
-- **Khai báo dị ứng user_profile:** Trường `allergies` có kiểu `AllergenCode[] | null` (`null`: chưa khai báo, `[]`: đã khai không có dị ứng). `RecipeRepo.list` khi `allergies` là `null` trả về danh sách rỗng kèm mã `ALLERGIES_NOT_DECLARED`. Màn Chào mừng bắt buộc chọn rõ trước khi tiếp tục.
-
----
-
-## 5. Câu hỏi mở
-- **Sắp xếp tiếng Việt:** Cơ chế sắp xếp danh sách món trên giao diện và CSDL: dùng bảng chữ cái tiếng Việt chuẩn (Vietnamese Collation / `localeCompare('vi')` có tính dấu thanh và phụ âm ghép như Đ, Ch, Tr) hay sắp xếp nhị phân SQLite (binary ASCII-order) như hiện tại?
-- **Cơ chế cập nhật dữ liệu OTA / Backend:** Phương án đồng bộ các phiên bản công thức mới từ backend vào thiết bị di động khi có mạng.
+- **Nguồn sự thật & hợp đồng kỳ vọng:** Schema `snake_case` theo `docs/plan.md`; mọi file trong `docs/expected/` là bất biến và được khóa mã băm SHA-256 trong `pnpm verify`.
+- **Quy tắc dữ liệu R1–R5:** Không tự bịa dữ liệu vào `data/`, không dùng AI giả ngầm (`cook.env` và `cook.ai.provider` bắt buộc đặt tường minh, mọi phản hồi giả đính `X-AI-Mock: true`), không lưu tên/dị ứng/nội dung câu hỏi-trả lời vào `telemetry_event` hoặc `ai_usage_log` (kể cả `POST /v1/ai/feedback`).
+- **Chiến lược triển khai backend & Android:** Tự quản VPS Ubuntu + Docker Compose là đường chính (`T21.7`), vẫn hỗ trợ phương án managed (`T21.8`). `applicationId` tạm `com.cook.app` chỉ khai báo một nơi tại `apps/mobile/app.config.ts`.

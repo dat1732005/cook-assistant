@@ -9,13 +9,18 @@
  */
 package com.cook.backend.controller;
 
+import com.cook.backend.dto.AiFeedbackRequest;
+import com.cook.backend.dto.AiFeedbackResponse;
 import com.cook.backend.dto.AskRequest;
 import com.cook.backend.dto.AskResponse;
 import com.cook.backend.dto.ErrorResponse;
 import com.cook.backend.dto.SubstituteRequest;
 import com.cook.backend.dto.SubstituteResponse;
 import com.cook.backend.service.AiService;
+import com.cook.backend.service.TelemetryService;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -28,9 +33,16 @@ public class AiController {
     public static final String MOCK_AI_HEADER = "X-AI-Mock";
 
     private final AiService aiService;
+    private final TelemetryService telemetryService;
 
     public AiController(AiService aiService) {
+        this(aiService, null);
+    }
+
+    @Autowired
+    public AiController(AiService aiService, TelemetryService telemetryService) {
         this.aiService = aiService;
+        this.telemetryService = telemetryService;
     }
 
     @PostMapping("/substitute")
@@ -58,9 +70,35 @@ public class AiController {
     }
 
     /**
-     * Làm gì: Đính kèm header X-AI-Mock: true vào ResponseEntity nếu backend đang chạy chế độ AI giả.
+     * Làm gì: Tiếp nhận phản hồi ẩn danh khi người dùng bấm "Câu trả lời sai" (T20b).
+     *         Không lưu nội dung câu hỏi hay câu trả lời, ghi nhận sự kiện telemetry kiểu ai_wrong_answer.
+     * Vào: Header X-Device-Id và AiFeedbackRequest (questionId, feedbackType).
+     * Ra: AiFeedbackResponse xác nhận sự kiện ai_wrong_answer đã lưu.
+     * Gọi bởi: Spring Web DispatcherServlet khi app gọi AiClient.reportFeedback().
+     */
+    @PostMapping("/feedback")
+    public ResponseEntity<AiFeedbackResponse> feedback(
+            @RequestHeader(value = "X-Device-Id", required = false) String rawDeviceId,
+            @Valid @RequestBody AiFeedbackRequest request) {
+        if (telemetryService == null) {
+            throw new IllegalStateException("TelemetryService chưa được khởi tạo cho /v1/ai/feedback.");
+        }
+        AiFeedbackResponse response = telemetryService.recordAiWrongAnswerFeedback(rawDeviceId, request);
+        return withOptionalMockHeader(ResponseEntity.ok()).body(response);
+    }
+
+    /**
+     * Làm gì: Đính kèm header X-AI-Mock: true vào ResponseEntity nếu backend đang
+     * 
+     * 
+     * 
+     * 
+     * chạy chế độ AI giả.
+     * 
      * Vào: builder (ResponseEntity.BodyBuilder cần gắn header).
-     * Ra: ResponseEntity.BodyBuilder đã gắn header (nếu là mock) hoặc giữ nguyên (nếu là real).
+     * 
+     * Ra: ResponseEntity.BodyBuilder đã gắn header (nếu là mock) hoặc giữ nguyên
+     * (nếu là real).
      * Gọi bởi: substitute() và ask().
      */
     private ResponseEntity.BodyBuilder withOptionalMockHeader(ResponseEntity.BodyBuilder builder) {

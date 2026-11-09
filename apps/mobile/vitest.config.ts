@@ -18,6 +18,7 @@ export default defineConfig({
   resolve: {
     alias: {
       'expo-constants': path.resolve(currentDir, 'src/test-mocks/expo-constants.ts'),
+      'expo-keep-awake': path.resolve(currentDir, 'src/test-mocks/expo-keep-awake.ts'),
     },
   },
   test: {

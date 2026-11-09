@@ -36,13 +36,25 @@ public class RateLimitFilter extends OncePerRequestFilter {
                                     FilterChain filterChain) throws ServletException, IOException {
         String path = request.getRequestURI();
 
-        // Chỉ áp dụng giới hạn cho các endpoint gọi AI
+        // Bỏ qua kiểm tra giới hạn đối với preflight CORS OPTIONS để trình duyệt đàm phán bình thường
+        if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
+        // Áp dụng gắn deviceHash cho mọi API /v1/ai/* và giới hạn tốc độ đối với các endpoint gọi mô hình AI
         if (path != null && path.startsWith("/v1/ai/")) {
             String rawDeviceId = request.getHeader("X-Device-Id");
             String deviceHash = deviceAnonymizer.anonymize(rawDeviceId);
 
             // Gắn deviceHash vào request attribute để controller sử dụng khi ghi log
             request.setAttribute("deviceHash", deviceHash);
+
+            // Phản hồi báo cáo câu trả lời sai không gọi AI ngoài nên không tiêu hao hạn mức AI
+            if ("/v1/ai/feedback".equals(path)) {
+                filterChain.doFilter(request, response);
+                return;
+            }
 
             SlidingWindowRateLimiter.RateLimitResult result = rateLimiter.check(deviceHash);
             if (!result.allowed()) {

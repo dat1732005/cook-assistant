@@ -18,7 +18,7 @@
 | --- | --- | --- | --- | --- | --- |
 | **Personal info** (Name, User IDs...) | `MISSING` | `MISSING` | `MISSING` | `MISSING` | Tên hiển thị chưa thu thập lên server; app dùng `X-Device-Id` ngẫu nhiên cục bộ, backend băm SHA-256 + salt. |
 | **Health and fitness** (Allergies / Dietary data trong mục Health / Medical info) | `MISSING` | `MISSING` | `MISSING` | `MISSING` | **Cần đặc biệt chú ý:** `allergies` lưu cục bộ trong SQLite và được gửi trong `POST /v1/ai/substitute` nếu người dùng dùng chức năng AI thay/bỏ nguyên liệu; cần đối chiếu trường hợp `RealAiProvider` gửi `SubstituteRequest` ra API AI thứ ba. |
-| **Messages / User content** (Câu hỏi tự do nhập vào ô Hỏi AI) | `MISSING` | `MISSING` | `MISSING` | `MISSING` | Gửi qua `POST /v1/ai/ask` (tắt mặc định ở backend cho đến khi bật cờ) và `POST /v1/ai/feedback` phía app. |
+| **Messages / User content** (Câu hỏi tự do nhập vào ô Hỏi AI) | `MISSING` | `MISSING` | `MISSING` | `MISSING` | Câu hỏi chỉ gửi qua `POST /v1/ai/ask` (tắt mặc định ở backend cho đến khi bật cờ). Nút báo sai `POST /v1/ai/feedback` chỉ gửi `questionId` và `feedbackType`, tuyệt đối không gửi hay lưu câu hỏi/câu trả lời. |
 | **App activity** (In-app actions / Telemetry ẩn danh) | `MISSING` | `MISSING` | `MISSING` | `MISSING` | Gửi 6 loại sự kiện ẩn danh qua `POST /v1/events`; có công tắc cho phép người dùng tắt hoàn toàn trong `SettingsScreen.tsx`. |
 | **App info and performance** (Diagnostics / AI usage logs) | `MISSING` | `MISSING` | `MISSING` | `MISSING` | Backend ghi `ai_usage_log` gồm mã băm thiết bị, endpoint, token, chi phí, trạng thái. |
 | **Device or other IDs** (`X-Device-Id`) | `MISSING` | `MISSING` | `MISSING` | `MISSING` | Mã ngẫu nhiên trong phiên app (không dùng Advertising ID / AAID / IMEI); backend băm một chiều thành `deviceHash`. |
@@ -36,7 +36,7 @@
    - Cờ tắt mặc định `/v1/ai/ask` phía backend: `apps/backend/src/main/java/com/cook/backend/controller/AiController.java`, `apps/backend/src/main/java/com/cook/backend/service/AiService.java`
    - DTO câu hỏi backend: `apps/backend/src/main/java/com/cook/backend/dto/AskRequest.java`
 3. **Truyền dữ liệu từ backend sang bên AI thứ ba:**
-   - Giao diện & provider: `apps/backend/src/main/java/com/cook/backend/ai/AiProvider.java`, `apps/backend/src/main/java/com/cook/backend/ai/RealAiProvider.java` *(hiện chưa gắn HTTP client thật)*, `apps/backend/src/main/java/com/cook/backend/service/AiService.java`
+   - Giao diện & provider: `apps/backend/src/main/java/com/cook/backend/ai/AiProvider.java`, `apps/backend/src/main/java/com/cook/backend/ai/RealAiProvider.java` *(mới dựng khung HTTP `HttpClient`, chưa chọn nhà cung cấp AI cụ thể — chờ chủ dự án)*, `apps/backend/src/main/java/com/cook/backend/service/AiService.java`
    - Mẫu prompt: `apps/backend/src/main/resources/prompts/`
    - Lịch sử chi phí kỹ thuật không chứa nội dung nhạy cảm: `apps/backend/src/main/java/com/cook/backend/entity/AiUsageLog.java`
 4. **Đo lường ẩn danh & cơ chế opt-out của người dùng:**
