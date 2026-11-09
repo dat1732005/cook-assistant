@@ -39,4 +39,9 @@ public class RealAiProvider implements AiProvider {
         log.info("Gọi RealAiProvider cho ask");
         return new AskResponse("Câu trả lời từ mô hình AI thật.", null);
     }
+
+    @Override
+    public boolean isMock() {
+        return false;
+    }
 }

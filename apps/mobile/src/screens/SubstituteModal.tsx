@@ -23,7 +23,12 @@ import {
   Alert,
 } from 'react-native';
 import type { Recipe, RecipeDetail } from '@cook/core';
-import { AiClient, defaultAiClient, SubstituteResultData } from '../services/ai-client.js';
+import {
+  AiClient,
+  defaultAiClient,
+  formatAiMockNotice,
+  SubstituteResultData,
+} from '../services/ai-client.js';
 
 export interface SubstituteModalProps {
   visible: boolean;
@@ -50,6 +55,7 @@ export function SubstituteModal({
   const [action, setAction] = useState<'omit' | 'substitute'>('substitute');
   const [loading, setLoading] = useState<boolean>(false);
   const [aiResult, setAiResult] = useState<SubstituteResultData | null>(null);
+  const [isAiMock, setIsAiMock] = useState<boolean>(false);
   const [selectedSuggestion, setSelectedSuggestion] = useState<string | null>(null);
   const [feedbackSent, setFeedbackSent] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -72,6 +78,7 @@ export function SubstituteModal({
   const handleConsultAi = useCallback(async () => {
     // Nếu là nguyên liệu bảo quản hoặc dính dị ứng, hiển thị cảnh báo cố định mà không cần AI
     if (isPreservationRole || hasAllergyConflict) {
+      setIsAiMock(false);
       setAiResult({
         severity: 'high',
         impact: isPreservationRole
@@ -86,6 +93,7 @@ export function SubstituteModal({
     setLoading(true);
     setErrorMessage(null);
     setFeedbackSent(false);
+    setIsAiMock(false);
 
     try {
       const res = await aiClient.substitute({
@@ -99,6 +107,9 @@ export function SubstituteModal({
         ingredientAllergens: ingredientAllergenMap,
       });
 
+      // Ghi nhận trạng thái bản giả từ header X-AI-Mock của backend
+      setIsAiMock(Boolean(res.isMock));
+
       if (res.success) {
         setAiResult(res.data);
         if (res.data.suggestions && res.data.suggestions.length > 0) {
@@ -108,6 +119,7 @@ export function SubstituteModal({
         setErrorMessage(res.message);
       }
     } catch {
+      setIsAiMock(false);
       setErrorMessage('Không thể kết nối tới máy chủ AI. Vui lòng thử lại.');
     } finally {
       setLoading(false);
@@ -152,6 +164,8 @@ export function SubstituteModal({
     onClose();
   }, [onApplySubstitute, selectedIngredient, action, selectedSuggestion, onClose]);
 
+  const mockNoticeText = formatAiMockNotice(isAiMock);
+
   return (
     <Modal visible={visible} animationType="slide" transparent={true} onRequestClose={onClose}>
       <View style={styles.modalOverlay}>
@@ -172,6 +186,7 @@ export function SubstituteModal({
                     onPress={() => {
                       setSelectedIngredient(item.ingredient);
                       setAiResult(null);
+                      setIsAiMock(false);
                       setFeedbackSent(false);
                     }}
                   >
@@ -246,6 +261,11 @@ export function SubstituteModal({
             {/* Thông báo lỗi nếu có */}
             {errorMessage ? (
               <View style={styles.errorBox}>
+                {mockNoticeText ? (
+                  <Text style={styles.mockNoticeText} testID="ai-mock-notice">
+                    {mockNoticeText}
+                  </Text>
+                ) : null}
                 <Text style={styles.errorText}>{errorMessage}</Text>
                 <TouchableOpacity style={styles.retryButton} onPress={handleConsultAi}>
                   <Text style={styles.retryButtonText}>Thử lại</Text>
@@ -256,6 +276,11 @@ export function SubstituteModal({
             {/* Kết quả tư vấn từ AI */}
             {aiResult ? (
               <View style={styles.resultBox}>
+                {mockNoticeText ? (
+                  <Text style={styles.mockNoticeText} testID="ai-mock-notice">
+                    {mockNoticeText}
+                  </Text>
+                ) : null}
                 <View style={styles.severityRow}>
                   <Text style={styles.severityLabel}>Mức ảnh hưởng:</Text>
                   <Text
@@ -588,6 +613,12 @@ const styles = StyleSheet.create({
     color: '#d97706',
     marginTop: 8,
     marginBottom: 8,
+  },
+  mockNoticeText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#7c3aed',
+    marginBottom: 6,
   },
   wrongAnswerButton: {
     paddingVertical: 6,

@@ -14,6 +14,7 @@ spring:
     enabled: false
 
 cook:
+  env: test
   env-check:
     enabled: false
   device-salt: "test-salt-secret-key-12345"

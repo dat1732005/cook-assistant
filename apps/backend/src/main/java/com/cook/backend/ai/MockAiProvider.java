@@ -14,7 +14,7 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 @Component
-@ConditionalOnProperty(name = "cook.ai.provider", havingValue = "mock", matchIfMissing = true)
+@ConditionalOnProperty(name = "cook.ai.provider", havingValue = "mock")
 public class MockAiProvider implements AiProvider {
 
     private final AtomicInteger callCount = new AtomicInteger(0);
@@ -88,5 +88,10 @@ public class MockAiProvider implements AiProvider {
             return new AskResponse(request.question(), null);
         }
         return new AskResponse("Bạn có thể đặt thêm 2 phút rồi kiểm tra.", null);
+    }
+
+    @Override
+    public boolean isMock() {
+        return true;
     }
 }

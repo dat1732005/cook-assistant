@@ -44,6 +44,16 @@ public class AiService {
     }
 
     /**
+     * Làm gì: Kiểm tra backend hiện tại có đang sử dụng bản AI giả (mock) hay không.
+     * Vào: Không có.
+     * Ra: true nếu đang dùng MockAiProvider, false nếu dùng RealAiProvider.
+     * Gọi bởi: AiController khi đính kèm header X-AI-Mock.
+     */
+    public boolean isMockAi() {
+        return aiProvider.isMock();
+    }
+
+    /**
      * Xử lý thay thế hoặc bỏ nguyên liệu (U1-U6).
      */
     public SubstituteResponse handleSubstitute(SubstituteRequest request, String deviceHash) {

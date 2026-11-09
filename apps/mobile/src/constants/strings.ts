@@ -189,4 +189,10 @@ export const STRINGS = {
     subtitle: 'Món ăn đã sẵn sàng để dọn ra bàn. Chúc bạn và gia đình có bữa ăn ngon miệng!',
     backToHomeButton: 'Về trang chủ',
   },
+
+  // Trợ lý AI & cảnh báo chế độ giả lập (T17, T18)
+  ai: {
+    mockNotice: '(chế độ thử, không phải AI thật)',
+    disclaimer: 'AI có thể mắc lỗi. Vui lòng kiểm tra lại trước khi thực hiện.',
+  },
 } as const;

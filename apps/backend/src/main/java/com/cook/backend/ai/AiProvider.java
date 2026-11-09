@@ -20,4 +20,10 @@ public interface AiProvider {
      * @return Phản hồi câu trả lời
      */
     AskResponse ask(AskRequest request);
+
+    /**
+     * Cho biết provider này có phải là bản giả lập (mock) hay không.
+     * @return true nếu là AI giả lập, false nếu là AI thật.
+     */
+    boolean isMock();
 }

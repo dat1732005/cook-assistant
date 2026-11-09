@@ -28,7 +28,7 @@ import type { Recipe, RecipeStep, SqlDriver } from '@cook/core';
 import { SessionService, type SessionSnapshot } from '@cook/core';
 import { useNavigation } from '../navigation/router.js';
 import { STRINGS } from '../constants/strings.js';
-import { defaultAiClient } from '../services/ai-client.js';
+import { AiClient, defaultAiClient, formatAiMockNotice } from '../services/ai-client.js';
 
 export interface CookScreenProps {
   recipe: Recipe;
@@ -36,6 +36,7 @@ export interface CookScreenProps {
   mode?: 'fastest' | 'fewest_tools';
   driver?: SqlDriver;
   serviceOverride?: SessionService;
+  aiClient?: AiClient;
   initialNow?: number;
 }
 
@@ -45,6 +46,7 @@ export function CookScreen({
   mode = 'fastest',
   driver,
   serviceOverride,
+  aiClient = defaultAiClient,
   initialNow = 0,
 }: CookScreenProps): React.JSX.Element {
   const { navigate, goBack, replace } = useNavigation();
@@ -64,7 +66,11 @@ export function CookScreen({
   // Khối hỏi đáp AI trong màn Nấu (T18.3, T18.4)
   const [aiQuestion, setAiQuestion] = useState<string>('');
   const [aiLoading, setAiLoading] = useState<boolean>(false);
-  const [aiAnswer, setAiAnswer] = useState<{ answer: string; action?: string | null } | null>(null);
+  const [aiAnswer, setAiAnswer] = useState<{
+    answer: string;
+    action?: string | null;
+    isMock?: boolean;
+  } | null>(null);
   const [feedbackSent, setFeedbackSent] = useState<boolean>(false);
 
   const handleAskAi = useCallback(async () => {
@@ -73,23 +79,23 @@ export function CookScreen({
     setFeedbackSent(false);
 
     try {
-      const res = await defaultAiClient.ask({
+      const res = await aiClient.ask({
         question: aiQuestion.trim(),
         currentStep: snapshot?.now_group[0],
         remainingSteps: snapshot?.next,
       });
 
       if (res.success) {
-        setAiAnswer(res.data);
+        setAiAnswer({ ...res.data, isMock: Boolean(res.isMock) });
       } else {
-        setAiAnswer({ answer: res.message, action: null });
+        setAiAnswer({ answer: res.message, action: null, isMock: Boolean(res.isMock) });
       }
     } catch {
-      setAiAnswer({ answer: 'Không thể kết nối trợ lý AI lúc này.', action: null });
+      setAiAnswer({ answer: 'Không thể kết nối trợ lý AI lúc này.', action: null, isMock: false });
     } finally {
       setAiLoading(false);
     }
-  }, [aiQuestion, snapshot]);
+  }, [aiClient, aiQuestion, snapshot]);
 
   // Áp dụng hành động đề xuất từ AI (hẹn giờ chỉ đổi khi người dùng bấm) (T18.3)
   const handleApplyAiAction = useCallback(async () => {
@@ -105,7 +111,7 @@ export function CookScreen({
 
   const handleReportWrongAnswer = useCallback(async () => {
     try {
-      await defaultAiClient.reportFeedback({
+      await aiClient.reportFeedback({
         question: aiQuestion,
         answer: aiAnswer?.answer,
       });
@@ -114,7 +120,7 @@ export function CookScreen({
     } catch {
       setFeedbackSent(true);
     }
-  }, [aiQuestion, aiAnswer]);
+  }, [aiClient, aiQuestion, aiAnswer]);
 
   // Khởi tạo phiên nấu khi vào màn hình
   useEffect(() => {
@@ -543,6 +549,11 @@ export function CookScreen({
 
           {aiAnswer && (
             <View style={styles.aiAnswerCard} testID="ai-answer-card">
+              {formatAiMockNotice(aiAnswer.isMock) ? (
+                <Text style={styles.aiMockNoticeText} testID="ai-mock-notice">
+                  {formatAiMockNotice(aiAnswer.isMock)}
+                </Text>
+              ) : null}
               <Text style={styles.aiAnswerText}>{aiAnswer.answer}</Text>
 
               {aiAnswer.action && (
@@ -1013,6 +1024,12 @@ const styles = StyleSheet.create({
     padding: 12,
     borderWidth: 1,
     borderColor: '#E0F2FE',
+  },
+  aiMockNoticeText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#7C3AED',
+    marginBottom: 6,
   },
   aiAnswerText: {
     fontSize: 14,

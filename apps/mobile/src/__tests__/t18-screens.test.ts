@@ -16,7 +16,12 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { Recipe } from '@cook/core';
-import { AiClient, setAnonymousDeviceIdForTesting } from '../services/ai-client.js';
+import {
+  AiClient,
+  formatAiMockNotice,
+  setAnonymousDeviceIdForTesting,
+} from '../services/ai-client.js';
+import { STRINGS } from '../constants/strings.js';
 
 describe('T18: Màn Thay hoặc bỏ và Hỏi nhanh AI khi đang nấu', () => {
   beforeEach(() => {
@@ -210,6 +215,49 @@ describe('T18: Màn Thay hoặc bỏ và Hỏi nhanh AI khi đang nấu', () => 
       // Người dùng chủ động bấm nút áp dụng
       applyAiAction('Thêm 2 phút hẹn giờ');
       expect(timerChanged).toBe(true);
+    });
+
+    it('Hiển thị "(chế độ thử, không phải AI thật)" khi backend trả header X-AI-Mock: true và ẩn khi dùng AI thật', async () => {
+      expect(STRINGS.ai.mockNotice).toBe('(chế độ thử, không phải AI thật)');
+
+      // 1. Khi backend trả về X-AI-Mock: true (từ MockAiProvider)
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        headers: new Headers({ 'X-AI-Mock': 'true' }),
+        json: async () => ({
+          answer: 'Thử chế độ giả lập.',
+          action: null,
+        }),
+      });
+
+      const client = new AiClient({ baseUrl: 'http://test-server' });
+      const mockRes = await client.ask({ question: 'Kiểm tra chế độ thử' });
+
+      expect(mockRes.isMock).toBe(true);
+      expect(formatAiMockNotice(mockRes.isMock)).toBe('(chế độ thử, không phải AI thật)');
+
+      // 2. Khi backend không trả header X-AI-Mock (từ RealAiProvider)
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        headers: new Headers(),
+        json: async () => ({
+          severity: 'low',
+          impact: 'Có thể thay bằng hành tây.',
+          suggestions: ['hanh-tay'],
+          confirm_required: false,
+        }),
+      });
+
+      const realRes = await client.substitute({
+        recipeId: 'thit-kho-to',
+        action: 'substitute',
+        ingredientId: 'hanh-la',
+      });
+
+      expect(realRes.isMock).toBe(false);
+      expect(formatAiMockNotice(realRes.isMock)).toBeNull();
     });
   });
 });

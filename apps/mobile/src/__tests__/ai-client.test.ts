@@ -1,5 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { AiClient, setAnonymousDeviceIdForTesting } from '../services/ai-client';
+import {
+  AiClient,
+  formatAiMockNotice,
+  setAnonymousDeviceIdForTesting,
+} from '../services/ai-client';
 
 describe('T17: AiClient trong ứng dụng di động', () => {
   beforeEach(() => {
@@ -112,5 +116,51 @@ describe('T17: AiClient trong ứng dụng di động', () => {
       expect(result.errorCode).toBe('FEATURE_DISABLED');
       expect(result.message).toContain('tạm tắt');
     }
+  });
+
+  it('Header X-AI-Mock: true -> đánh dấu isMock = true và formatAiMockNotice hiển thị đúng thông báo chế độ thử', async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: new Headers({ 'X-AI-Mock': 'true' }),
+      json: async () => ({
+        severity: 'low',
+        impact: 'Thử thay thế',
+        suggestions: ['hanh-tay'],
+        confirm_required: false,
+      }),
+    });
+    global.fetch = mockFetch;
+
+    const client = new AiClient({ baseUrl: 'http://localhost:8080' });
+    const result = await client.substitute({
+      recipeId: 'mon-1',
+      action: 'substitute',
+      ingredientId: 'hanh-la',
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.isMock).toBe(true);
+    expect(formatAiMockNotice(result.isMock)).toBe('(chế độ thử, không phải AI thật)');
+  });
+
+  it('Không có header X-AI-Mock -> isMock = false và không hiển thị thông báo chế độ thử', async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: new Headers(),
+      json: async () => ({
+        answer: 'Đun sôi thêm 2 phút.',
+        action: null,
+      }),
+    });
+    global.fetch = mockFetch;
+
+    const client = new AiClient({ baseUrl: 'http://localhost:8080' });
+    const result = await client.ask({ question: 'Đun bao lâu?' });
+
+    expect(result.success).toBe(true);
+    expect(result.isMock).toBe(false);
+    expect(formatAiMockNotice(result.isMock)).toBeNull();
   });
 });
