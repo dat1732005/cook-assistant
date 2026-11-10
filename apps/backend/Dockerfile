@@ -7,7 +7,7 @@
 # Bám theo: docs/tasks.md mục T21.1 và Phụ lục thay đổi.
 # ==============================================================================
 
-FROM eclipse-temurin:21-jdk-alpine AS builder
+FROM eclipse-temurin:25-jdk-alpine AS builder
 WORKDIR /build
 
 # Cài curl để Maven Wrapper tải Maven distribution qua HTTPS ổn định trên Alpine
@@ -32,7 +32,7 @@ RUN ./mvnw -B clean package -DskipTests \
 # ==============================================================================
 # Tầng 2: Runtime gọn nhẹ chỉ chứa JRE 21 và tài khoản không có quyền root
 # ==============================================================================
-FROM eclipse-temurin:21-jre-alpine AS runtime
+FROM eclipse-temurin:25-jre-alpine AS runtime
 
 # Cài curl phục vụ Docker HEALTHCHECK gọi /health và tzdata cho múi giờ chuẩn
 RUN apk add --no-cache curl tzdata
