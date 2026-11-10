@@ -1,0 +1,21 @@
+# ==============================================================================
+# File: deploy/docker-compose.managed.yml
+# Làm gì: File ghi đè (override) cho hướng triển khai Managed Container / Managed PostgreSQL (T21.8),
+#         giúp Docker Compose chạy được cả hai hướng mà không phải sửa docker-compose.yml gốc:
+#         - Tắt container postgres và caddy cục bộ (CSDL và TLS HTTPS do nền tảng quản lý đảm nhiệm).
+#         - Bỏ phụ thuộc postgres của dịch vụ backend và ánh xạ cổng ${PORT:-8080} trực tiếp.
+# Cách chạy:
+#   docker compose -f deploy/docker-compose.yml -f deploy/docker-compose.managed.yml --env-file deploy/.env up -d --build
+# ==============================================================================
+services:
+  postgres:
+    profiles: ["disabled-in-managed-mode"]
+
+  caddy:
+    profiles: ["disabled-in-managed-mode"]
+
+  backend:
+    depends_on: !reset []
+    ports: !override
+      - "${PORT:-8080}:${PORT:-8080}"
+

@@ -1,0 +1,110 @@
+# ==============================================================================
+# File: deploy/docker-compose.yml
+# Làm gì: Cấu hình Docker Compose chuẩn cho hệ thống Trợ lý nấu ăn (T21.2):
+#         - Đường chính (VPS tự quản T21.7): postgres + backend + caddy (HTTPS).
+#         - Chạy được cả hướng Managed DB (T21.8) khi kết hợp với:
+#           docker compose -f deploy/docker-compose.yml -f deploy/docker-compose.managed.yml --env-file deploy/.env up -d --build
+# Quy ước: Mọi bí mật và cấu hình đọc từ biến môi trường / file .env (không commit .env).
+# ==============================================================================
+name: cook-assistant
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-cook_assistant}
+      POSTGRES_USER: ${POSTGRES_USER:-cook_user}
+      # Cố ý không đặt mật khẩu mặc định: container Postgres sẽ từ chối khởi tạo nếu thiếu POSTGRES_PASSWORD
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-}
+      TZ: Asia/Ho_Chi_Minh
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-cook_user} -d ${POSTGRES_DB:-cook_assistant}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    networks:
+      - cook_internal
+
+  backend:
+    build:
+      context: ../apps/backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PORT: ${PORT:-8080}
+      # Mặc định trỏ container postgres nội bộ ở chế độ VPS; có thể ghi đè sang Managed DB qua .env
+      SPRING_DATASOURCE_URL: ${SPRING_DATASOURCE_URL:-jdbc:postgresql://postgres:5432/${POSTGRES_DB:-cook_assistant}}
+      SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME:-${POSTGRES_USER:-cook_user}}
+      SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD:-${POSTGRES_PASSWORD:-}}
+      DEVICE_SALT: ${DEVICE_SALT:-}
+      COOK_ENV: ${COOK_ENV:-}
+      COOK_LOG_LEVEL: ${COOK_LOG_LEVEL:-INFO}
+      JAVA_OPTS: ${JAVA_OPTS:-}
+      COOK_AI_PROVIDER: ${COOK_AI_PROVIDER:-}
+      COOK_AI_API_KEY: ${COOK_AI_API_KEY:-}
+      COOK_AI_ENDPOINT_URL: ${COOK_AI_ENDPOINT_URL:-}
+      COOK_AI_MODEL: ${COOK_AI_MODEL:-MISSING}
+      COOK_AI_ASK_ENABLED: ${COOK_AI_ASK_ENABLED:-false}
+      COOK_AI_TIMEOUT_MS: ${COOK_AI_TIMEOUT_MS:-5000}
+      COOK_RATE_LIMIT_LIMIT: ${COOK_RATE_LIMIT_LIMIT:-5}
+      COOK_RATE_LIMIT_WINDOW_SECONDS: ${COOK_RATE_LIMIT_WINDOW_SECONDS:-3600}
+      COOK_CORS_ALLOWED_ORIGINS: ${COOK_CORS_ALLOWED_ORIGINS:-}
+      COOK_CORS_ALLOW_CREDENTIALS: ${COOK_CORS_ALLOW_CREDENTIALS:-false}
+      COOK_CORS_MAX_AGE_SECONDS: ${COOK_CORS_MAX_AGE_SECONDS:-3600}
+    ports:
+      # Chỉ mở cổng loopback 127.0.0.1 trên VPS để kiểm tra /health nội bộ khi cần; lưu lượng ngoài đi qua Caddy
+      - "127.0.0.1:${PORT:-8080}:${PORT:-8080}"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:$${PORT:-8080}/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 45s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
+    networks:
+      - cook_internal
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN:-:80}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
+    networks:
+      - cook_internal
+
+volumes:
+  postgres_data:
+  caddy_data:
+  caddy_config:
+
+networks:
+  cook_internal:
+    driver: bridge
+

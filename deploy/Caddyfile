@@ -1,0 +1,26 @@
+# ==============================================================================
+# File: deploy/Caddyfile
+# Làm gì: Reverse proxy trước backend Java Spring Boot, tự cấp chứng chỉ HTTPS
+#         qua Let's Encrypt khi APP_DOMAIN là tên miền thật (T21.2).
+#         Nếu APP_DOMAIN chưa đặt (thử máy ảo cục bộ chưa có domain) sẽ lắng nghe :80.
+#         Ghi log truy cập ra STDOUT dưới dạng JSON chuẩn container (T21.6).
+# ==============================================================================
+{$APP_DOMAIN::80} {
+	# Xuất toàn bộ access log ra STDOUT để docker compose logs thu thập thống nhất
+	log {
+		output stdout
+		format json
+	}
+
+	# Bổ sung header bảo mật cơ bản và ẩn thông tin server
+	header {
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		-Server
+	}
+
+	# Chuyển tiếp toàn bộ request API và /health tới container backend qua mạng nội bộ
+	reverse_proxy backend:8080
+}
+

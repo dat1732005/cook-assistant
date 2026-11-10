@@ -26,10 +26,20 @@ public class SlidingWindowRateLimiter {
     private final Map<String, List<Long>> deviceCallTimestamps = new ConcurrentHashMap<>();
 
     public SlidingWindowRateLimiter(
-            @Value("${cook.rate-limit.limit:3}") int defaultLimit,
-            @Value("${cook.rate-limit.window-seconds:60}") int defaultWindowSeconds) {
-        this.defaultLimit = defaultLimit;
-        this.defaultWindowSeconds = defaultWindowSeconds;
+            @Value("${cook.rate-limit.limit:5}") int defaultLimit,
+            @Value("${cook.rate-limit.window-seconds:3600}") int defaultWindowSeconds) {
+        this.defaultLimit = Math.max(1, defaultLimit);
+        this.defaultWindowSeconds = Math.max(1, defaultWindowSeconds);
+    }
+
+    /** Trả về số lượt tối đa trong một cửa sổ trượt đang cấu hình từ biến môi trường (T21.9). */
+    public int getDefaultLimit() {
+        return defaultLimit;
+    }
+
+    /** Trả về độ dài cửa sổ trượt tính bằng giây đang cấu hình từ biến môi trường (T21.9). */
+    public int getDefaultWindowSeconds() {
+        return defaultWindowSeconds;
     }
 
     public synchronized RateLimitResult check(String deviceKey) {
