@@ -1,0 +1,90 @@
+name: Dependency Vulnerability Scan
+
+on:
+  pull_request:
+    branches:
+      - '**'
+  push:
+    branches:
+      - main
+      - 'task/**'
+  schedule:
+    - cron: '0 3 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  vulnerability-report:
+    name: Report dependency vulnerabilities (non-blocking)
+    runs-on: ubuntu-latest
+    # Chỉ báo cáo lỗ hổng phụ thuộc, không chặn gộp pull request ở giai đoạn MVP (T22.3)
+    continue-on-error: true
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 12
+
+      - name: Set up Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+
+      - name: Install Node dependencies for audit
+        continue-on-error: true
+        run: pnpm install --frozen-lockfile
+
+      - name: Audit JS/TS dependencies with pnpm audit (report only)
+        continue-on-error: true
+        run: |
+          mkdir -p reports
+          set +e
+          pnpm audit --audit-level=moderate > reports/pnpm-audit.txt 2>&1
+          AUDIT_EXIT=$?
+          set -e
+          echo "### Báo cáo pnpm audit (mã thoát=${AUDIT_EXIT}, chỉ báo cáo không chặn)" >> "$GITHUB_STEP_SUMMARY"
+          echo '```text' >> "$GITHUB_STEP_SUMMARY"
+          tail -n 80 reports/pnpm-audit.txt >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Scan Node & Maven dependencies with Trivy FS (report only)
+        uses: aquasecurity/trivy-action@v0.36.0
+        continue-on-error: true
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          scanners: 'vuln'
+          severity: 'MEDIUM,HIGH,CRITICAL'
+          format: 'table'
+          output: 'reports/trivy-vuln-report.txt'
+          ignore-unfixed: false
+          exit-code: '0'
+
+      - name: Publish Trivy report to GitHub Step Summary
+        if: always()
+        continue-on-error: true
+        run: |
+          if [ -f reports/trivy-vuln-report.txt ]; then
+            echo "### Báo cáo Trivy Vulnerability Scan (pnpm & Maven, không chặn)" >> "$GITHUB_STEP_SUMMARY"
+            echo '```text' >> "$GITHUB_STEP_SUMMARY"
+            head -n 120 reports/trivy-vuln-report.txt >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload vulnerability report artifacts
+        if: always()
+        continue-on-error: true
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: dependency-vulnerability-reports
+          path: reports/
+          if-no-files-found: warn
+          retention-days: 14
