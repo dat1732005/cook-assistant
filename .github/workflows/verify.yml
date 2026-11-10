@@ -38,5 +38,32 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Run verification pipeline
+      - name: Run full JS/TS, data & secret verification pipeline
         run: pnpm verify
+
+  backend-verify:
+    name: Run backend ./mvnw verify
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21 (Temurin)
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+          cache: 'maven'
+
+      - name: Ensure Maven Wrapper executable permission
+        run: chmod +x apps/backend/mvnw
+
+      - name: Run Spring Boot tests & Maven verify lifecycle
+        working-directory: apps/backend
+        run: ./mvnw -B verify
+
+      - name: Validate Docker Compose VPS & Managed configurations
+        run: |
+          docker compose --env-file deploy/.env.example -f deploy/docker-compose.yml config -q
+          docker compose --env-file deploy/.env.example -f deploy/docker-compose.yml -f deploy/docker-compose.managed.yml config -q
