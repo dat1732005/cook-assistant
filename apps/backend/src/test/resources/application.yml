@@ -17,7 +17,7 @@ cook:
   env: test
   env-check:
     enabled: false
-  device-salt: "test-salt-secret-key-12345"
+  device-salt: ${DEVICE_SALT:unit-test-h2-ephemeral}
   rate-limit:
     limit: ${COOK_RATE_LIMIT_LIMIT:3}
     window-seconds: ${COOK_RATE_LIMIT_WINDOW_SECONDS:60}
